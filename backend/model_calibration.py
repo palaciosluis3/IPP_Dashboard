@@ -14,11 +14,7 @@ def get_path(filename):
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     backend_path = os.path.join(base_path, "backend")
     
-    # 1. Si es la librería PPI, se queda en backend
-    if filename == 'policy_priority_inference.py':
-        return os.path.join(backend_path, filename)
-    
-    # 2. Si el archivo es un input crudo (raw_*), debe estar en la raíz
+    # 1. Si el archivo es un input crudo (raw_*), debe estar en la raíz
     if filename.startswith('raw_'):
         return os.path.join(base_path, filename)
     
@@ -37,19 +33,6 @@ file_rel = get_path('data_relational_table.xlsx')
 file_params = get_path('parameters.xlsx')
 
 # 2. Descarga de la librería PPI (si no existe localmente)
-lib_path = get_path('policy_priority_inference.py')
-if not os.path.exists(lib_path):
-    print("Descargando la librería Policy Priority Inference (PPI)...")
-    url = 'https://raw.githubusercontent.com/oguerrer/ppi/main/source_code/policy_priority_inference.py'
-    try:
-        r = requests.get(url, timeout=30)
-        with open(lib_path, 'w', encoding='utf-8') as f:
-            f.write(r.text)
-        print("Librería descargada exitosamente.")
-    except Exception as e:
-        print(f"Error al descargar la librería: {e}")
-        sys.exit(1)
-
 import policy_priority_inference as ppi
 
 # 3. Validación de archivos de entrada
@@ -102,7 +85,7 @@ for _, row in df_rela.iterrows():
 
 # 4. Configuración de la Calibración
 parallel_processes = os.cpu_count() - 1 if os.cpu_count() > 1 else 1
-threshold = 0.9
+threshold = 0.55
 low_precision_counts = 50
 
 print(f"Iniciando calibración del modelo...")

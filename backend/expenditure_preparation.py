@@ -9,11 +9,7 @@ def get_path(filename):
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     backend_path = os.path.join(base_path, "backend")
     
-    # 1. Si es la librería PPI, se queda en backend
-    if filename == 'policy_priority_inference.py':
-        return os.path.join(backend_path, filename)
-    
-    # 2. Si el archivo es un input crudo (raw_*), debe estar en la raíz
+    # 1. Si el archivo es un input crudo (raw_*), debe estar en la raíz
     if filename.startswith('raw_'):
         return os.path.join(base_path, filename)
     

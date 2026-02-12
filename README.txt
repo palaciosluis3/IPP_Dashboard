@@ -47,6 +47,7 @@ El flujo de trabajo está dividido en 5 pasos guiados:
 
 - **Compilador de la App:** Luis Palacios
 - **Creadores del modelo IPP:** Dr. Omar Guerrero & Prof. Gonzalo Castañeda.
+- **Librería Python:** Esta app utiliza la librería oficial `policy-priority-inference`, mantenida por el equipo de IPP para asegurar rigor científico.
 - **Más información:** Visita https://policypriority.org/ para conocer la metodología detallada detrás de este sistema. También, visita el repositorio oficial de IPP en GitHub: https://github.com/oguerrer/ppi.
 
 ---

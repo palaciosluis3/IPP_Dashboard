@@ -21,11 +21,7 @@ def get_path(filename):
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     backend_path = os.path.join(base_path, "backend")
     
-    # 1. Si es la librería PPI, se queda en backend
-    if filename == 'policy_priority_inference.py':
-        return os.path.join(backend_path, filename)
-    
-    # 2. Si el archivo es un input crudo (raw_*), debe estar en la raíz
+    # 1. Si el archivo es un input crudo (raw_*), debe estar en la raíz
     if filename.startswith('raw_'):
         return os.path.join(base_path, filename)
     
@@ -42,16 +38,6 @@ file_params = get_path('parameters.xlsx')
 file_net = get_path('data_network.xlsx')
 file_exp = get_path('data_expenditure.xlsx')
 file_rel = get_path('data_relational_table.xlsx')
-lib_path = get_path('policy_priority_inference.py')
-
-# Descarga de la librería PPI si no existe
-if not os.path.exists(lib_path):
-    print("Descargando librería PPI...")
-    url = 'https://raw.githubusercontent.com/oguerrer/ppi/main/source_code/policy_priority_inference.py'
-    r = requests.get(url)
-    with open(lib_path, 'w', encoding='utf-8') as f:
-        f.write(r.text)
-
 import policy_priority_inference as ppi
 
 # Carga de Datos

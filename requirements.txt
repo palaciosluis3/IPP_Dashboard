@@ -6,3 +6,4 @@ openpyxl
 Pillow
 requests
 scikit-learn
+policy-priority-inference
