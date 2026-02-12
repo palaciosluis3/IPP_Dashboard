@@ -2,6 +2,11 @@
 
 Esta aplicación es una herramienta avanzada basada en el modelo **Policy Priority Inference (PPI)**, diseñada para ayudar a los tomadores de decisiones a priorizar políticas públicas y optimizar el gasto público para alcanzar metas de desarrollo (ODS).
 
+## ⬇️ Descargar la App
+
+Puedes encontrar la última versión estable y las instrucciones de actualización en el repositorio oficial:
+🔗 **https://github.com/palaciosluis3/IPP_Dashboard/releases**
+
 ## 🚀 Estructura del Proyecto
 
 - `app.py`: Interfaz principal (ejecutada con Streamlit).
