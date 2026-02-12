@@ -5,7 +5,7 @@ Esta aplicación es una herramienta avanzada basada en el modelo **Policy Priori
 ## ⬇️ Descargar la App
 
 Puedes encontrar la última versión estable y las instrucciones de actualización en el repositorio oficial:
-🔗 **https://github.com/palaciosluis3/IPP_Dashboard/releases**
+🔗 https://github.com/palaciosluis3/IPP_Dashboard/releases
 
 ## 🚀 Estructura del Proyecto
 
