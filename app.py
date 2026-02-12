@@ -20,7 +20,7 @@ COLORS = {
     "sky_blue": "#3B82F6",
     "teal_green": "#0D9488",
     "amber": "#F59E0B",
-    "charcoal": "#374151",
+    "charcoal": "#262730",
     "cool_gray": "#9CA3AF",
     "off_white": "#F9FAFB",
     "crimson_red": "#DC2626",
@@ -129,6 +129,47 @@ st.markdown(f"""
     section[data-testid="stSidebar"] * {{
         color: white !important;
     }}
+
+    /* Estilo profesional para el área de arrastre de archivos (Dropzone) */
+    [data-testid="stFileUploader"] section {{
+        min-height: 220px !important;
+        border: 2px dashed {COLORS['cool_gray']} !important;
+        border-radius: 15px !important;
+        padding: 40px !important;
+        background-color: #f8f9fa !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.3s ease !important;
+    }}
+    
+    [data-testid="stFileUploader"] section:hover {{
+        border-color: {COLORS['sky_blue']} !important;
+        background-color: #f0f7ff !important;
+    }}
+
+    [data-testid="stFileUploader"] section > div {{
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        text-align: center !important;
+        width: 100% !important;
+    }}
+
+    /* Ajuste del botón de examinar dentro del dropzone */
+    [data-testid="stFileUploader"] button {{
+        margin-top: 10px !important;
+        width: auto !important;
+    }}
+
+    [data-testid="stFileUploader"] label {{
+        display: block !important;
+        text-align: center !important;
+        width: 100% !important;
+        margin-bottom: 10px !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -195,17 +236,26 @@ with st.sidebar:
             st.markdown(f"⚪ {label}")
     
     st.markdown("---")
-    if st.button("🔄 Reiniciar Aplicación"):
+    if st.button("🔄 Reiniciar Aplicación", use_container_width=True):
         for key in st.session_state.keys():
             del st.session_state[key]
         st.rerun()
+
+    # Espacio flexible para empujar las referencias hacia abajo
+    st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # --- SECCIÓN DE REFERENCIAS ---
+    # --- SECCIÓN DE REFERENCIAS (AGRUPADAS) ---
     st.markdown("---")
-    st.markdown("### 📚 Referencias")
-    st.caption("**Compilador App:** Luis Palacios")
-    st.caption("**Creadores PPI:** Dr. Omar Guerrero & Prof. Gonzalo Castañeda")
-    st.markdown("[🌐 Visitar policypriority.org](https://policypriority.org/)")
+    st.markdown("#### 📚 Referencias")
+    
+    st.markdown(f"""
+    <div style="font-size: 0.85rem; line-height: 1.4;">
+        <p><b>Compilador App:</b><br>{'Luis Alberto Palacios'}</p>
+        <p><b>Creadores IPP:</b><br>{'Dr. Omar Guerrero & Prof. Gonzalo Castañeda.'}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f'<a href="https://policypriority.org/" target="_blank" style="font-size: 0.85rem;">🌐 Visitar policypriority.org</a>', unsafe_allow_html=True)
 
 # --- PASO 1: CARGA DE ARCHIVOS ---
 if st.session_state.step == 1:
