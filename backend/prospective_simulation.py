@@ -5,7 +5,7 @@ import requests
 import warnings
 import sys
 import multiprocessing
-# import matplotlib.pyplot as plt
+import policy_priority_inference as ppi
 
 # Desactivar advertencias
 warnings.filterwarnings('ignore')
@@ -38,7 +38,6 @@ file_params = get_path('parameters.xlsx')
 file_net = get_path('data_network.xlsx')
 file_exp = get_path('data_expenditure.xlsx')
 file_rel = get_path('data_relational_table.xlsx')
-import policy_priority_inference as ppi
 
 # Carga de Datos
 print("Cargando datos para la simulación prospectiva...")

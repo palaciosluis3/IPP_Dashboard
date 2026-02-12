@@ -4,6 +4,7 @@ import numpy as np
 import requests
 import warnings
 import sys
+import policy_priority_inference as ppi
 
 # Desactivar advertencias innecesarias
 warnings.filterwarnings('ignore')
@@ -18,7 +19,7 @@ def get_path(filename):
     if filename.startswith('raw_'):
         return os.path.join(base_path, filename)
     
-    # 3. Todos los demás archivos (generados o intermedios) van a Outputs
+    # 2. Todos los demás archivos (generados o intermedios) van a Outputs
     out_dir = os.path.join(base_path, "Outputs")
     if not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
@@ -32,10 +33,8 @@ file_rel = get_path('data_relational_table.xlsx')
 # Archivo de salida
 file_params = get_path('parameters.xlsx')
 
-# 2. Descarga de la librería PPI (si no existe localmente)
-import policy_priority_inference as ppi
 
-# 3. Validación de archivos de entrada
+# 2. Validación de archivos de entrada
 files = [file_indis, file_net, file_exp, file_rel]
 for f in files:
     if not os.path.exists(f):
@@ -83,7 +82,7 @@ for _, row in df_rela.iterrows():
         programmes = [p for p in row.values[1:] if pd.notna(p) and p != '']
         B_dict[idx] = programmes
 
-# 4. Configuración de la Calibración
+# 3. Configuración de la Calibración
 parallel_processes = os.cpu_count() - 1 if os.cpu_count() > 1 else 1
 threshold = 0.55
 low_precision_counts = 50
@@ -100,7 +99,7 @@ parameters = ppi.calibrate(
     verbose=True, low_precision_counts=low_precision_counts
 )
 
-# 5. Guardar resultados
+# 4. Guardar resultados
 if isinstance(parameters, np.ndarray) and parameters.ndim == 2:
     header = parameters[0]
     data = parameters[1:]
