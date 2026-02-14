@@ -84,7 +84,7 @@ for _, row in df_rela.iterrows():
 
 # 3. Configuración de la Calibración
 parallel_processes = os.cpu_count() - 1 if os.cpu_count() > 1 else 1
-threshold = 0.55
+threshold = 0.9
 low_precision_counts = 50
 
 print(f"Iniciando calibración del modelo...")

@@ -114,13 +114,7 @@ def generate_report():
 
         ultima_milla = 1 if row['IF'] > ULTIMA_MILLA_THRESHOLD else 0
         
-        # Recomendación
-        cond_a_tiempo = (cumple_a_tiempo == 1)
-        cond_no_elastico = (cumple_meta_baseline == 1 and elasticidad == 0)
-        cond_no_instrumental = (cumple_meta_baseline == 1 and row['instrumental'] == 0)
-        cond_ultima_milla = (ultima_milla == 1)
-
-        if cond_a_tiempo or cond_ultima_milla:
+        if cumple_a_tiempo == 1 or ultima_milla == 1:
             recomendacion = "Continuar programas"
             cat_green.append(name)
         elif elasticidad == 1 and cumple_meta_increase == 1:
