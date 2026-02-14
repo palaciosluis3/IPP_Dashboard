@@ -120,7 +120,7 @@ def generate_report():
         cond_no_instrumental = (cumple_meta_baseline == 1 and row['instrumental'] == 0)
         cond_ultima_milla = (ultima_milla == 1)
 
-        if cond_a_tiempo or cond_no_elastico or cond_no_instrumental or cond_ultima_milla:
+        if cond_a_tiempo or cond_ultima_milla:
             recomendacion = "Continuar programas"
             cat_green.append(name)
         elif elasticidad == 1 and cumple_meta_increase == 1:
