@@ -70,6 +70,34 @@ else:
     # Solo mantenemos correlaciones fuertes (abs > 0.5)
     M[np.abs(M) < 0.5] = 0
 
+    # --- NUEVO: Refinamiento Heurístico ---
+    # Nota: Usamos 'color' como proxy de ODS ya que indicadores del mismo ODS comparten color
+    ods_proxy = data['color'].values
+    
+    # 1. Filtro de Coherencia Intra-ODS: Eliminar influencias negativas dentro del mismo ODS
+    for i in range(N):
+        for j in range(N):
+            if M[i, j] < 0 and ods_proxy[i] == ods_proxy[j]:
+                M[i, j] = 0
+
+    # 2. Filtro de Bucles Contradictorios: Resolver señales de dirección opuesta
+    for i in range(N):
+        for j in range(i + 1, N): # Iteración por pares únicos para evitar redundancia
+            val_ij = M[i, j]
+            val_ji = M[j, i]
+            
+            # Si existen conexiones bidireccionales con signos opuestos
+            if (val_ij > 0 and val_ji < 0) or (val_ij < 0 and val_ji > 0):
+                if np.abs(val_ij) > np.abs(val_ji):
+                    M[j, i] = 0 # Gana la señal de mayor magnitud
+                elif np.abs(val_ji) > np.abs(val_ij):
+                    M[i, j] = 0 
+                else: 
+                    # En caso de empate absoluto, eliminamos ambos por contradicción total
+                    M[i, j] = 0
+                    M[j, i] = 0
+    # --------------------------------------
+
     # 4. Generación de lista de aristas (Edge List)
     ids = data.seriesCode.values
     edge_list = []
