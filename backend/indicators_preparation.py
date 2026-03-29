@@ -37,11 +37,11 @@ for index, row in data.iterrows():
     time_series = row[years].values
     denominator = row.bestbound - row.worstbound
     
-    # Evitar división por cero si bounds son iguales
+    # 1. Alerta si bounds son iguales
     if denominator == 0:
-        normalised_serie = np.zeros_like(time_series)
-    else:
-        normalised_serie = (time_series - row.worstbound) / denominator
+        raise ValueError(f"Error: 'worstbound' y 'bestbound' son iguales para el indicador '{row.seriesCode}'. Esto no está permitido.")
+    
+    normalised_serie = (time_series - row.worstbound) / denominator
     
     # --- NUEVA FUNCIONALIDAD: INTERPOLACIÓN ---
     # Convertimos a Series de Pandas y aseguramos que sea numérica
@@ -50,8 +50,10 @@ for index, row in data.iterrows():
     # Interpolación lineal para llenar los NaNs
     s = s.interpolate(method='linear', limit_direction='both')
     
-    # Asegurar que los valores interpolados se mantengan entre [0, 1]
-    s = s.clip(lower=0, upper=1)
+    # 2. Test para verificar que los datos normalizados estén estrictamente en (0, 1)
+    if (s <= 0).any() or (s >= 1).any():
+        raise ValueError(f"Error: El indicador '{row.seriesCode}' tiene una o más observaciones normalizadas fuera del rango (0, 1). "
+                         f"Se detectaron valores menores o iguales a 0, o mayores o iguales a 1.")
     
     normalised_series.append(s.values)
 
@@ -83,10 +85,12 @@ for index, row in df.iterrows():
     
     # IMPORTANTE: El target del gobierno también debe normalizarse para ser comparable con IF
     denom = data.loc[index, 'bestbound'] - data.loc[index, 'worstbound']
-    if denom != 0:
-        norm_gov_target = (raw_gov_target - data.loc[index, 'worstbound']) / denom
-    else:
-        norm_gov_target = raw_gov_target
+    norm_gov_target = (raw_gov_target - data.loc[index, 'worstbound']) / denom
+
+    # Test para verificar que el target normalizado esté estrictamente en (0, 1)
+    if norm_gov_target <= 0 or norm_gov_target >= 1:
+        raise ValueError(f"Error: El indicador '{data.loc[index, 'seriesCode']}' tiene un 'norm_gov_target' fuera del rango (0, 1). "
+                         f"Valor detectado: {norm_gov_target}")
 
     # Lógica solicitada: si target > IF, tomar target; de lo contrario, IF * 1.05
     if norm_gov_target > row['IF']:

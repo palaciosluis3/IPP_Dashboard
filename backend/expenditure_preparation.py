@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import sys
 from sklearn.linear_model import LinearRegression
 
 # 1. Referencias flotantes para los archivos
@@ -39,6 +40,19 @@ else:
     # Años y Limpieza inicial
     years = [str(col) for col in df_budget_raw.columns if str(col).isnumeric()]
     df_budget_raw.columns = [str(col) if str(col).isnumeric() else col for col in df_budget_raw.columns]
+    
+    # --- NUEVA VALIDACIÓN: PRESUPUESTO MAYOR A CERO ---
+    # Es un requisito crítico que el presupuesto no sea 0 en ninguna observación
+    for index, row in df_budget_raw.iterrows():
+        budget_series = row[years]
+        if (budget_series <= 0).any():
+            print("\n" + "!"*60)
+            print(" ERROR CRÍTICO: PRESUPUESTO IGUAL O MENOR A CERO ")
+            print("!"*60)
+            print(f"El SDG Target '{row['sdg_target']}' tiene valores de presupuesto <= 0 en su serie histórica.")
+            print("El modelo IPP requiere presupuestos estrictamente positivos para su procesamiento.")
+            print("Por favor, revisa y corrige el archivo 'raw_expenditure.xlsx'.")
+            sys.exit(1)
     
     # --- PROCESAMIENTO BASE (Precios Reales y Per Cápita) ---
     pop_map = dict(zip(df_pop.iloc[:, 0].astype(str), df_pop.iloc[:, 1]))
@@ -105,17 +119,20 @@ else:
     missing_budget = [int(sdg) for sdg in instrumental_sdgs if sdg not in budget_sdgs]
     
     if missing_budget:
+        # Buscar qué indicadores (seriesCode) se ven afectados por la falta de presupuesto en estos SDG
+        affected_indicators = data_indi[data_indi.sdg.isin(missing_budget)].seriesCode.unique().tolist()
+
         print("\n" + "!"*60)
         print(" ERROR CRÍTICO: FALTA DE PRESUPUESTO PARA INDICADORES INSTRUMENTALES ")
         print("!"*60)
         print(f"\nLos siguientes SDG instrumentales NO tienen presupuesto en 'raw_expenditure.xlsx':")
         print(f"SDG Targets: {missing_budget}")
+        print(f"Indicadores(seriesCode) asociados: {affected_indicators}")
         print("\nACCIÓN REQUERIDA:")
         print("1. Por favor, revisa y corrige el archivo 'raw_expenditure.xlsx'.")
         print("2. Asegúrate de que todos los SDG anteriores tengan una fila con datos presupuestarios.")
         print("3. Vuelve a ejecutar este proceso.")
         print("\nEl proceso se ha detenido para evitar errores en la simulación.")
-        import sys
         sys.exit(1) # Detiene la ejecución con código de error
 
     # Filtrar el presupuesto procesado para solo dejar los instrumentales
