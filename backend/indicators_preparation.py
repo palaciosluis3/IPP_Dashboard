@@ -33,6 +33,7 @@ years = [column_name for column_name in data.columns if str(column_name).isnumer
 
 # 3. Revisión de errores: Corregimos la normalización (faltaba el .append)
 normalised_series = []
+out_of_bounds_series = []
 for index, row in data.iterrows():
     time_series = row[years].values
     denominator = row.bestbound - row.worstbound
@@ -52,8 +53,7 @@ for index, row in data.iterrows():
     
     # 2. Test para verificar que los datos normalizados estén estrictamente en (0, 1)
     if (s <= 0).any() or (s >= 1).any():
-        raise ValueError(f"Error: El indicador '{row.seriesCode}' tiene una o más observaciones normalizadas fuera del rango (0, 1). "
-                         f"Se detectaron valores menores o iguales a 0, o mayores o iguales a 1.")
+        out_of_bounds_series.append(row.seriesCode)
     
     normalised_series.append(s.values)
 
@@ -79,6 +79,7 @@ df.loc[df.I0 == df.IF, 'IF'] = df.loc[df.I0 == df.IF, 'IF'] * 1.05
 
 # 2. Loop para refinar la variable 'goals'
 goals = []
+out_of_bounds_targets = []
 for index, row in df.iterrows():
     # Obtenemos el target original
     raw_gov_target = data.loc[index, 'gov_target']
@@ -89,8 +90,7 @@ for index, row in df.iterrows():
 
     # Test para verificar que el target normalizado esté estrictamente en (0, 1)
     if norm_gov_target <= 0 or norm_gov_target >= 1:
-        raise ValueError(f"Error: El indicador '{data.loc[index, 'seriesCode']}' tiene un 'norm_gov_target' fuera del rango (0, 1). "
-                         f"Valor detectado: {norm_gov_target}")
+        out_of_bounds_targets.append((data.loc[index, 'seriesCode'], norm_gov_target))
 
     # Lógica solicitada: si target > IF, tomar target; de lo contrario, IF * 1.05
     if norm_gov_target > row['IF']:
@@ -99,6 +99,26 @@ for index, row in df.iterrows():
         goals.append(row['IF'] * 1.05)
 
 df['goals'] = goals
+
+# --- REPORTE DE ERRORES DE VALIDACIÓN ---
+if out_of_bounds_series or out_of_bounds_targets:
+    print("\n" + "!" * 50)
+    print("ERRORES DE VALIDACIÓN DETECTADOS")
+    print("!" * 50)
+    
+    if out_of_bounds_series:
+        print(f"\nLos siguientes indicadores ({len(out_of_bounds_series)}) tienen series temporales fuera de (0, 1):")
+        for code in out_of_bounds_series:
+            print(f" - {code}")
+            
+    if out_of_bounds_targets:
+        print(f"\nLos siguientes indicadores ({len(out_of_bounds_targets)}) tienen metas (gov_target) fuera de (0, 1):")
+        for code, val in out_of_bounds_targets:
+            print(f" - {code}: valor normalizado = {val:.4f}")
+            
+    print("\nPor favor corrija los bounds o los targets en el archivo Excel y vuelva a ejecutar.")
+    print("!" * 50 + "\n")
+    raise ValueError("El script se detuvo porque se encontraron datos fuera del rango permitido (0, 1).")
 
 # Cálculo de tasas de éxito (Success Rates)
 # Compara cada año con el anterior: sum(año_n > año_n-1) / total_transiciones
