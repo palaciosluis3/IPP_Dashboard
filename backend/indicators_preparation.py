@@ -73,12 +73,16 @@ df['color'] = data.color
 df['I0'] = df[years[0]]
 df['IF'] = df[years[-1]]
 
+# Nuevo test: Identificar indicadores sin cambio (I0 == IF)
+static_series = df[df.I0 == df.IF].seriesCode.tolist()
+
 # Ajuste por si el indicador no cambió nada (I0 == IF)
 # Se hace antes de calcular goals para asegurar que goals > IF final
 df.loc[df.I0 == df.IF, 'IF'] = df.loc[df.I0 == df.IF, 'IF'] * 1.05
 
 # 2. Loop para refinar la variable 'goals'
 goals = []
+real_goals = []
 out_of_bounds_targets = []
 for index, row in df.iterrows():
     # Obtenemos el target original
@@ -97,11 +101,15 @@ for index, row in df.iterrows():
         goals.append(norm_gov_target)
     else:
         goals.append(row['IF'] * 1.05)
+    
+    # Guardamos la meta real normalizada
+    real_goals.append(norm_gov_target)
 
 df['goals'] = goals
+df['real_goals'] = real_goals
 
 # --- REPORTE DE ERRORES DE VALIDACIÓN ---
-if out_of_bounds_series or out_of_bounds_targets:
+if out_of_bounds_series or out_of_bounds_targets or static_series:
     print("\n" + "!" * 50)
     print("ERRORES DE VALIDACIÓN DETECTADOS")
     print("!" * 50)
@@ -115,10 +123,15 @@ if out_of_bounds_series or out_of_bounds_targets:
         print(f"\nLos siguientes indicadores ({len(out_of_bounds_targets)}) tienen metas (gov_target) fuera de (0, 1):")
         for code, val in out_of_bounds_targets:
             print(f" - {code}: valor normalizado = {val:.4f}")
+
+    if static_series:
+        print(f"\nLos siguientes indicadores ({len(static_series)}) presentan I0 == IF (sin cambio):")
+        for code in static_series:
+            print(f" - {code}")
             
-    print("\nPor favor corrija los bounds o los targets en el archivo Excel y vuelva a ejecutar.")
+    print("\nPor favor corrija los datos, bounds o los targets en el archivo Excel y vuelva a ejecutar.")
     print("!" * 50 + "\n")
-    raise ValueError("El script se detuvo porque se encontraron datos fuera del rango permitido (0, 1).")
+    raise ValueError("El script se detuvo porque se encontraron inconsistencias en los datos.")
 
 # Cálculo de tasas de éxito (Success Rates)
 # Compara cada año con el anterior: sum(año_n > año_n-1) / total_transiciones

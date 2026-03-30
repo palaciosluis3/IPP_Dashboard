@@ -33,7 +33,6 @@ def get_path(filename):
 
 # Archivos
 file_indis = get_path('data_indicators.xlsx')
-file_raw_indis = get_path('raw_indicators.xlsx')
 file_params = get_path('parameters.xlsx')
 file_net = get_path('data_network.xlsx')
 file_exp = get_path('data_expenditure.xlsx')
@@ -42,7 +41,6 @@ file_rel = get_path('data_relational_table.xlsx')
 # Carga de Datos
 print("Cargando datos para la simulación prospectiva...")
 df_indis = pd.read_excel(file_indis)
-df_raw_indis = pd.read_excel(file_raw_indis)
 df_params = pd.read_excel(file_params)
 df_net = pd.read_excel(file_net)
 df_exp = pd.read_excel(file_exp)
@@ -58,8 +56,7 @@ Imin = df_indis.minVals.values
 goals = df_indis.goals.values
 
 indis_index = {code: i for i, code in enumerate(df_indis.seriesCode)}
-real_goals_map = dict(zip(df_raw_indis.seriesCode, df_raw_indis.gov_target))
-real_goals = np.array([real_goals_map.get(code, 0) for code in df_indis.seriesCode])
+real_goals = df_indis.real_goals.values
 
 alphas = df_params.alpha.values
 alphas_prime = df_params.alpha_prime.values
@@ -71,7 +68,7 @@ for _, row in df_net.iterrows():
         A[indis_index[row.origin], indis_index[row.destination]] = row.weight
 
 # --- Tiempo y Calibración ---
-historical_years = [col for col in df_raw_indis.columns if str(col).isnumeric()]
+historical_years = [col for col in df_indis.columns if str(col).isnumeric()]
 calibration_index = int(np.round(50 / len(historical_years)))
 T_sim = YEARS_TO_FORECAST * calibration_index
 
