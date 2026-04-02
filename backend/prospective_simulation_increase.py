@@ -48,20 +48,20 @@ df_exp = pd.read_excel(file_exp)
 df_rela = pd.read_excel(file_rel)
 
 N = len(df_indis)
-I0 = df_indis.IF.values 
-R = df_indis.instrumental.values
-qm = df_indis.qm.values
-rl = df_indis.rl.values
-Imax = df_indis.maxVals.values
-Imin = df_indis.minVals.values
-goals = df_indis.goals.values
+I0 = df_indis.IF.values.copy()
+R = df_indis.instrumental.values.copy()
+qm = df_indis.qm.values.copy()
+rl = df_indis.rl.values.copy()
+Imax = df_indis.maxVals.values.copy()
+Imin = df_indis.minVals.values.copy()
+goals = df_indis.goals.values.copy()
 
 indis_index = {code: i for i, code in enumerate(df_indis.seriesCode)}
 real_goals = df_indis.real_goals.values
 
-alphas = df_params.alpha.values
-alphas_prime = df_params.alpha_prime.values
-betas = df_params.beta.values
+alphas = df_params.alpha.values.copy()
+alphas_prime = df_params.alpha_prime.values.copy()
+betas = df_params.beta.values.copy()
 
 A = np.zeros((N, N))
 for _, row in df_net.iterrows():

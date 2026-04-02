@@ -44,18 +44,15 @@ for index, row in data.iterrows():
     
     normalised_serie = (time_series - row.worstbound) / denominator
     
-    # --- NUEVA FUNCIONALIDAD: INTERPOLACIÓN ---
-    # Convertimos a Series de Pandas y aseguramos que sea numérica
+    # Convertimos a Series de Pandas para manejo flexible (pero sin interpolar aún)
     s = pd.to_numeric(pd.Series(normalised_serie), errors='coerce')
     
-    # Interpolación lineal para llenar los NaNs
-    s = s.interpolate(method='linear', limit_direction='both')
-    
     # 2. Test para verificar que los datos normalizados estén estrictamente en (0, 1)
-    if (s <= 0).any() or (s >= 1).any():
+    # Lo hacemos sobre los datos disponibles (dropna) antes de interpolar
+    if (s.dropna() <= 0).any() or (s.dropna() >= 1).any():
         out_of_bounds_series.append(row.seriesCode)
     
-    normalised_series.append(s.values)
+    normalised_series.append(s.values.copy())
 
 # Crear el nuevo DataFrame con los datos normalizados
 df = pd.DataFrame(normalised_series, columns=years)
@@ -69,15 +66,37 @@ df['instrumental'] = data.instrumental
 df['seriesName'] = data.seriesName
 df['color'] = data.color
 
-# Valores iniciales y finales
-df['I0'] = df[years[0]]
-df['IF'] = df[years[-1]]
+# 3. CÁLCULO DE MÉTRICAS (Antes de interpolar)
+# -------------------------------------------
+
+# Valores iniciales y finales Crudos
+df['I0'] = df[years[0]].copy()
+df['IF'] = df[years[-1]].copy()
+
+# Cálculo de éxito antes de interpolar (ignora NaNs para ser fiel a los datos originales)
+def calculate_raw_success(row_values):
+    valid = row_values[~np.isnan(row_values)]
+    if len(valid) < 2: return 0.0
+    return np.sum(valid[1:] > valid[:-1]) / (len(valid) - 1)
+
+success_rates_list = df[years].apply(lambda x: calculate_raw_success(x.values), axis=1)
+successRates = success_rates_list.values.copy()
+
+# Recomendación metodológica: evitar 0 y 1 puros
+successRates[successRates == 0] = 0.05
+successRates[successRates == 1] = 0.95
+df['successRates'] = successRates
+
+# Primero creamos una versión interpolada para asegurar que cálculos de IF->goals sean robustos si falta el último año
+df_interp = df[years].interpolate(method='linear', axis=1, limit_direction='both')
+# Si I0 o IF son NaNs en el original, los completamos con la interpolación para no romper el modelo
+df['I0'] = df['I0'].fillna(df_interp[years[0]])
+df['IF'] = df['IF'].fillna(df_interp[years[-1]])
 
 # Nuevo test: Identificar indicadores sin cambio (I0 == IF)
 static_series = df[df.I0 == df.IF].seriesCode.tolist()
 
 # Ajuste por si el indicador no cambió nada (I0 == IF)
-# Se hace antes de calcular goals para asegurar que goals > IF final
 df.loc[df.I0 == df.IF, 'IF'] = df.loc[df.I0 == df.IF, 'IF'] * 1.05
 
 # 2. Loop para refinar la variable 'goals'
@@ -133,15 +152,9 @@ if out_of_bounds_series or out_of_bounds_targets or static_series:
     print("!" * 50 + "\n")
     raise ValueError("El script se detuvo porque se encontraron inconsistencias en los datos.")
 
-# Cálculo de tasas de éxito (Success Rates)
-# Compara cada año con el anterior: sum(año_n > año_n-1) / total_transiciones
-success_values = df[years].values
-successRates = np.sum(success_values[:, 1:] > success_values[:, :-1], axis=1) / (len(years) - 1)
-
-# Recomendación metodológica: evitar 0 y 1 puros
-successRates[successRates == 0] = 0.05
-successRates[successRates == 1] = 0.95
-df['successRates'] = successRates
+# --- FINALIZACIÓN ---
+# Interpolamos las series temporales solo al final para entrega del archivo
+df[years] = df_interp
 
 # Parámetros constantes (Gobernanza)
 df['qm'] = QM_VALUE

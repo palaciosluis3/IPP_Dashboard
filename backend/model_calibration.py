@@ -51,12 +51,12 @@ df_rela = pd.read_excel(file_rel)
 
 # Prepara variables base
 N = len(df_indis)
-I0 = df_indis.I0.values
-IF = df_indis.IF.values
-success_rates = df_indis.successRates.values
-R = df_indis.instrumental.values
-qm = df_indis.qm.values
-rl = df_indis.rl.values
+I0 = df_indis.I0.values.copy()
+IF = df_indis.IF.values.copy()
+success_rates = df_indis.successRates.values.copy()
+R = df_indis.instrumental.values.copy()
+qm = df_indis.qm.values.copy()
+rl = df_indis.rl.values.copy()
 
 # Mapeo de índices para la red
 indis_index = {code: i for i, code in enumerate(df_indis.seriesCode)}
@@ -84,7 +84,7 @@ for _, row in df_rela.iterrows():
 
 # 3. Configuración de la Calibración
 parallel_processes = os.cpu_count() - 1 if os.cpu_count() > 1 else 1
-threshold = 0.9
+threshold = 0.54
 low_precision_counts = 50
 
 print(f"Iniciando calibración del modelo...")

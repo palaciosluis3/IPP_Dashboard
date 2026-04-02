@@ -24,6 +24,8 @@ Puedes encontrar la última versión estable y las instrucciones de actualizaci�
 
 Sigue estos pasos para poner en marcha la aplicación en tu computadora de forma aislada y segura:
 
+0. Requiere Python 3.12 instalado en el sistema.
+
 1. **Instalación Inicial (Aislamiento de Entorno)**:
    - Haz doble clic en el archivo `setup.bat`.
    - Este script creará automáticamente una carpeta llamada `.venv` que contiene una instancia de Python dedicada solo a esta app.
