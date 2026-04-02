@@ -8,9 +8,10 @@ This project operates on a locally orchestrated two-tier architecture:
 - **Outputs (`Outputs/`):** Dynamic directory where the system saves generated plots, the consolidated Excel report (`final_report_IPP.xlsx`), and the executive PDF summary (`Resumen_Recomendaciones_IPP.pdf`).
 
 # Setup & Execution Commands
-- **Initial Setup:** Run `setup.bat` on Windows to build the Python `venv` and install `requirements.txt`.
-- **Launch Application:** Execute `start_app.bat` or `PPI_Launcher.lnk` to launch the Streamlit server.
-- **Manual Launch:** `streamlit run app.py`
+- **Environment Management:** This project uses an automated Python virtual environment (`.venv`).
+- **Initial Setup:** Run `setup.bat` to create/repair the `.venv` and install `requirements.txt` via `pip`.
+- **Launch Application:** Use `start_app.bat`. It will check for the `.venv` existence and launch streamlit using the local interpreter.
+- **Manual Launch:** `%VENV_PATH%\Scripts\python.exe -m streamlit run app.py`
 
 # Code Style & Conventions
 - **Language:** Python (>=1.21, <2.0 for NumPy compatibility).

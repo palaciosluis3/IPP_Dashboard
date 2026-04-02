@@ -22,16 +22,17 @@ Puedes encontrar la última versión estable y las instrucciones de actualizaci�
 
 ## 🛠️ Instalación y Configuración
 
-Sigue estos pasos para poner en marcha la aplicación en tu computadora:
+Sigue estos pasos para poner en marcha la aplicación en tu computadora de forma aislada y segura:
 
-1. **Instalación Inicial**:
+1. **Instalación Inicial (Aislamiento de Entorno)**:
    - Haz doble clic en el archivo `setup.bat`.
-   - Este script creará un entorno virtual de Python (`venv`) e instalará todas las librerías necesarias de forma automática.
-   - Solo necesitas hacerlo la primera vez.
+   - Este script creará automáticamente una carpeta llamada `.venv` que contiene una instancia de Python dedicada solo a esta app.
+   - **Ventaja:** Esto garantiza que las librerías de la app no entren en conflicto con otras versiones de Python que ya tengas en tu sistema.
+   - Solo necesitas ejecutarlo la primera vez o cuando se añadan nuevas librerías.
 
 2. **Iniciar la Aplicación**:
-   - Una vez instalado, haz doble clic en `PPI_Launcher`.
-   - Se abrirá una ventana de comandos y, tras unos segundos, tu navegador mostrará el Dashboard de la aplicación.
+   - Una vez instalado el entorno, haz doble clic en `start_app.bat` (o el acceso directo `PPI_Launcher` si está configurado).
+   - El sistema detectará el entorno virtual y lanzará la interfaz de Streamlit en tu navegador predeterminado.
 
 ## 📖 Cómo usar la App
 
