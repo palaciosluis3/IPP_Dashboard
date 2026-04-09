@@ -6,6 +6,13 @@ import time
 import re
 import sys
 
+# --- PARÁMETROS PERSISTENTES (Se actualizan al correr el modelo) ---
+QM_PERSISTENT = 0.4248
+RL_PERSISTENT = 0.5383
+GROWTH_PERSISTENT = 25.0
+YEARS_PERSISTENT = 15
+INTER_YEAR_PERSISTENT = 3
+
 # --- CONFIGURACIÓN DE PÁGINA Y ESTILO ---
 st.set_page_config(
     page_title="IPP Dashboard | Análisis de Políticas Públicas",
@@ -185,7 +192,13 @@ st.markdown(f"""
 if 'step' not in st.session_state:
     st.session_state.step = 1
 
-# Inicialización de parámetros para sincronización
+# Inicialización de parámetros para sincronización y persistencia
+if 'qm' not in st.session_state: st.session_state.qm = QM_PERSISTENT
+if 'rl' not in st.session_state: st.session_state.rl = RL_PERSISTENT
+if 'annual_growth' not in st.session_state: st.session_state.annual_growth = GROWTH_PERSISTENT
+if 'years_sim' not in st.session_state: st.session_state.years_sim = YEARS_PERSISTENT
+if 'inter_year' not in st.session_state: st.session_state.inter_year = INTER_YEAR_PERSISTENT
+
 if 'thresh' not in st.session_state: st.session_state.thresh = 0.90
 if 'elastic' not in st.session_state: st.session_state.elastic = 0.03
 if 'last_mile' not in st.session_state: st.session_state.last_mile = 0.90
@@ -303,15 +316,17 @@ elif st.session_state.step == 2:
 
     col1, col2 = st.columns(2)
     with col1:
-        qm = st.number_input("QM - Control of Corruption (0.0 - 1.0)", min_value=0.0, max_value=1.0, value=0.4248, format="%.4f")
+        qm = st.number_input("QM - Control of Corruption (0.0 - 1.0)", min_value=0.0, max_value=1.0, value=st.session_state.qm, format="%.4f")
     with col2:
-        rl = st.number_input("RL - Rule of Law (0.0 - 1.0)", min_value=0.0, max_value=1.0, value=0.5383, format="%.4f")
+        rl = st.number_input("RL - Rule of Law (0.0 - 1.0)", min_value=0.0, max_value=1.0, value=st.session_state.rl, format="%.4f")
     
     c1, c2 = st.columns([1, 5])
     with c1:
         if st.button("⬅️ Atrás"): prev_step(); st.rerun()
     with c2:
         if st.button("Aplicar y Continuar ➡️"):
+            st.session_state.qm = qm
+            st.session_state.rl = rl
             update_script_config(get_path("indicators_preparation.py", folder="backend"), {"QM_VALUE": qm, "RL_VALUE": rl})
             next_step()
             st.rerun()
@@ -323,14 +338,14 @@ elif st.session_state.step == 3:
     with st.expander("🛠️ Escenario Presupuestal y Tiempos", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            annual_growth = st.number_input("Crecimiento Anual del Presupuesto (en %)", value=25.0, min_value=0.0, max_value=100.0)
+            annual_growth = st.number_input("Crecimiento Anual del Presupuesto (en %)", value=st.session_state.annual_growth, min_value=0.0, max_value=100.0)
         with col2:
-            years_sim = st.number_input("Años a proyectar (Total)", value=16, min_value=1, max_value=50)
+            years_sim = st.number_input("Años a proyectar (Total)", value=st.session_state.years_sim, min_value=1, max_value=50)
         
         total_growth_factor = 1.0 + (annual_growth / 100.0) * years_sim
         st.warning(f"📈 Resultado: Con un crecimiento anual del {annual_growth}%, el presupuesto final será **{total_growth_factor:.2f} veces** el inicial.")
         
-        inter_year = st.number_input("Periodo Intermedio de Convergencia (Año)", value=4, min_value=1, max_value=years_sim-1,
+        inter_year = st.number_input("Periodo Intermedio de Convergencia (Año)", value=st.session_state.inter_year, min_value=1, max_value=years_sim-1,
                                      help="Número de años en el cual desea analizar convergencias de indicadores tempranas a su metas establecidas.")
             
     with st.expander("🔬 Calibración y Diagnóstico", expanded=True):
@@ -360,6 +375,9 @@ elif st.session_state.step == 3:
         if st.button("⬅️ Atrás"): prev_step(); st.rerun()
     with c2:
         if st.button("Configurar Motor y Continuar ➡️"):
+            st.session_state.annual_growth = annual_growth
+            st.session_state.years_sim = years_sim
+            st.session_state.inter_year = inter_year
             update_script_config(get_path("model_calibration.py", folder="backend"), {"threshold": st.session_state.thresh})
             update_script_config(get_path("prospective_simulation.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("prospective_simulation_increase.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year, "BUDGET_GROWTH_FACTOR": total_growth_factor})
@@ -377,6 +395,15 @@ elif st.session_state.step == 4:
         if st.button("⬅️ Atrás"): prev_step(); st.rerun()
     with c2:
         if st.button("🚀 INICIAR PROCESAMIENTO COMPLETO"):
+            # Persistir parámetros en el código de app.py para la próxima sesión
+            update_script_config(__file__, {
+                "QM_PERSISTENT": st.session_state.qm,
+                "RL_PERSISTENT": st.session_state.rl,
+                "GROWTH_PERSISTENT": st.session_state.annual_growth,
+                "YEARS_PERSISTENT": st.session_state.years_sim,
+                "INTER_YEAR_PERSISTENT": st.session_state.inter_year
+            })
+            
             scripts = [
                 ("Prep. Indicadores", "indicators_preparation.py"),
                 ("Redes Interdep.", "interdependency_networks.py"),
@@ -463,6 +490,6 @@ elif st.session_state.step == 5:
         outputs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Outputs")
         st.write("Todos los archivos generados y las gráficas se guardaron en:")
         st.code(outputs_dir)
-        st.info("💡 **Nota:** Puedes abrir esta carpeta manualmente en tu explorador de Windows para revisar las donas de convergencia y parámetros técnicos.")
+        st.info("💡 **Nota:** Puedes abrir esta carpeta manualmente en tu explorador de Windows para revisar las gráficas y parámetros técnicos.")
 
     st.balloons()

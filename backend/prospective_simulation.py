@@ -12,8 +12,8 @@ warnings.filterwarnings('ignore')
 
 # 1. Configuración de Usuario (Simulación)
 # ---------------------------------------------------------
-YEARS_TO_FORECAST = 16 
-INTERMEDIATE_CONVERGENCE_YEAR = 4 
+YEARS_TO_FORECAST = 15 
+INTERMEDIATE_CONVERGENCE_YEAR = 3 
 # ---------------------------------------------------------
 
 def get_path(filename):
@@ -128,8 +128,16 @@ if __name__ == '__main__':
         import matplotlib.pyplot as plt
         # VISUALIZACIONES 1 y 2: BARRAS (ESTÉTICA ORIGINAL)
         # ---------------------------------------------------------
-        midpoint = 51 # Mantenemos el corte en 51 para consistencia visual con el original
-        groups = [(0, midpoint, 'first'), (midpoint, N, 'second')]
+        # Dividir indicadores en N grupos para no exceder 50 por gráfica
+        max_per_plot = 50
+        num_plots = int(np.ceil(N / max_per_plot))
+        per_plot = int(np.ceil(N / num_plots))
+        
+        groups = []
+        for i in range(num_plots):
+            start = i * per_plot
+            end = min((i + 1) * per_plot, N)
+            groups.append((start, end, f'part_{i+1}'))
 
         for start, end, label in groups:
             fig = plt.figure(figsize=(12, 4))
@@ -157,7 +165,7 @@ if __name__ == '__main__':
             plt.ylabel('levels', fontsize=14)
             plt.xlabel('indicators', fontsize=14)
             plt.tight_layout()
-            plt.savefig(get_path(f'Bars_baseline_{label}_half.pdf'))
+            plt.savefig(get_path(f'Bars_baseline_{label}.pdf'))
             plt.close()
 
         # Visualización 3: Dona de Progreso (ESTÉTICA ORIGINAL)

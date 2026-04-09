@@ -8,8 +8,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Configuración básica (Debe coincidir con prospect_simulation.py y final_report_generator.py)
-INTERMEDIATE_CONVERGENCE_YEAR = 4 
-YEARS_TO_FORECAST = 16
+INTERMEDIATE_CONVERGENCE_YEAR = 3 
+YEARS_TO_FORECAST = 15
 
 def get_path(filename):
     """Obtiene la ruta absoluta para los archivos de entrada y salida."""
@@ -94,64 +94,74 @@ def generate_plots_by_consideration():
         "Revisar los programas asociados": "revisar"
     }
 
-    # Generación de las 3 gráficas
+    # Generación de las gráficas
     for reco in recommendations:
-        subset = df_merged[df_merged['Recomendacion_Final'] == reco]
-        num_items = len(subset)
+        subset_full = df_merged[df_merged['Recomendacion_Final'] == reco]
+        num_items_full = len(subset_full)
         
-        if num_items == 0:
+        if num_items_full == 0:
             print(f"[-] Sin indicadores para: '{reco}'... omitiendo.")
             continue
 
-        print(f"[+] Graficando {num_items} indicadores para: '{reco}'")
-        
-        # Ajuste dinámico del ancho según el volumen de indicadores
-        # Mínimo 12 para que se vea bien, escalando si hay muchos
-        fig_width = max(12, num_items * 0.5)
-        fig = plt.figure(figsize=(fig_width, 5))
-        
-        for idx, (_, row) in enumerate(subset.iterrows()):
-            x_pos = idx
-            
-            # Obtener valores clave
-            val_start = row[time_cols[0]]
-            val_inter = row[time_cols[inter_idx_num]]
-            val_final = row[time_cols[-1]]
-            
-            # 1. Barra base (nivel inicial)
-            plt.bar(x_pos, val_start, color=row.color, width=.65, alpha=.4)
-            
-            # 2. Flecha progreso intermedio (Año 4) - Línea continua gruesa
-            plt.arrow(x=x_pos, y=val_start, dx=0, dy=val_inter - val_start, 
-                      color=row.color, linewidth=2.5, alpha=1, 
-                      head_width=.3, head_length=.015)
-            
-            # 3. Flecha progreso final (Año T) - Línea punteada
-            plt.arrow(x=x_pos, y=val_start, dx=0, dy=val_final - val_start, 
-                      color=row.color, linewidth=1.2, alpha=0.8, 
-                      head_width=.3, head_length=.015, linestyle=':')
-            
-            # 4. Meta Real (Punto negro)
-            if 'real_goal' in row:
-                plt.scatter(x_pos, row.real_goal, color='black', s=25, zorder=10)
+        # Decidir si dividir el grupo (si hay más de 50 indicadores)
+        if num_items_full > 50:
+            mid = num_items_full // 2
+            groups = [
+                (subset_full.iloc[:mid], f"{file_suffixes[reco]}_1"),
+                (subset_full.iloc[mid:], f"{file_suffixes[reco]}_2")
+            ]
+            print(f"[+] Dividiendo {num_items_full} indicadores para: '{reco}' en dos partes.")
+        else:
+            groups = [(subset_full, file_suffixes[reco])]
+            print(f"[+] Graficando {num_items_full} indicadores para: '{reco}'")
 
-        # Estética de la gráfica (Consistente con original)
-        plt.xlim(-1, num_items)
-        plt.xticks(range(num_items), subset.seriesCode, rotation=90, fontsize=8)
-        plt.gca().spines['top'].set_visible(False)
-        plt.gca().spines['right'].set_visible(False)
-        plt.ylabel('Levels', fontsize=12)
-        plt.xlabel('Indicators', fontsize=12)
-        plt.title(f"Prospective Simulation: {reco}", fontsize=15, pad=20)
-        
-        plt.tight_layout()
-        
-        # Guardado
-        out_name = f'Bars_baseline_by_consideration_{file_suffixes[reco]}.pdf'
-        save_path = get_path(out_name)
-        plt.savefig(save_path)
-        plt.close()
-        print(f"    -> Guardada en: {out_name}")
+        for subset, suffix in groups:
+            num_items = len(subset)
+            # Delimitamos el ancho máximo (similar a prospective_simulation.py que usa 12, 4 para ~50 indicadores)
+            fig_width = 12 if num_items >= 30 else max(8, num_items * 0.4)
+            fig = plt.figure(figsize=(fig_width, 4))
+            
+            for idx, (_, row) in enumerate(subset.iterrows()):
+                x_pos = idx
+                
+                # Obtener valores clave
+                val_start = row[time_cols[0]]
+                val_inter = row[time_cols[inter_idx_num]]
+                val_final = row[time_cols[-1]]
+                
+                # 1. Barra base (nivel inicial)
+                plt.bar(x_pos, val_start, color=row.color, width=.65, alpha=.4)
+                
+                # 2. Flecha progreso intermedio - Línea continua gruesa
+                plt.arrow(x=x_pos, y=val_start, dx=0, dy=val_inter - val_start, 
+                          color=row.color, linewidth=2.5, alpha=1, 
+                          head_width=.3, head_length=.015)
+                
+                # 3. Flecha progreso final - Línea punteada
+                plt.arrow(x=x_pos, y=val_start, dx=0, dy=val_final - val_start, 
+                          color=row.color, linewidth=1.2, alpha=0.8, 
+                          head_width=.3, head_length=.015, linestyle=':')
+                
+                # 4. Meta Real (Punto negro)
+                if 'real_goal' in row:
+                    plt.scatter(x_pos, row.real_goal, color='black', s=25, zorder=10)
+
+            # Estética de la gráfica
+            plt.xlim(-1, num_items)
+            plt.xticks(range(num_items), subset.seriesCode, rotation=90, fontsize=7)
+            plt.gca().spines['top'].set_visible(False)
+            plt.gca().spines['right'].set_visible(False)
+            plt.ylabel('levels', fontsize=12)
+            plt.xlabel('indicators', fontsize=12)
+            
+            plt.tight_layout()
+            
+            # Guardado
+            out_name = f'Bars_baseline_by_consideration_{suffix}.pdf'
+            save_path = get_path(out_name)
+            plt.savefig(save_path)
+            plt.close()
+            print(f"    -> Guardada en: {out_name}")
 
     print("\nProceso completado exitosamente.")
 
