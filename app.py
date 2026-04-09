@@ -363,6 +363,7 @@ elif st.session_state.step == 3:
             update_script_config(get_path("model_calibration.py", folder="backend"), {"threshold": st.session_state.thresh})
             update_script_config(get_path("prospective_simulation.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("prospective_simulation_increase.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year, "BUDGET_GROWTH_FACTOR": total_growth_factor})
+            update_script_config(get_path("prospective_simulation_byconsideration.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("final_report_generator.py", folder="backend"), {"ULTIMA_MILLA_THRESHOLD": st.session_state.last_mile, "ELASTICITY_THRESHOLD": st.session_state.elastic})
             next_step()
             st.rerun()
@@ -383,7 +384,8 @@ elif st.session_state.step == 4:
                 ("CALIBRACIÓN", "model_calibration.py"),
                 ("Simulación Base", "prospective_simulation.py"),
                 ("Escenario Aumento", "prospective_simulation_increase.py"),
-                ("Generador Reporte", "final_report_generator.py")
+                ("Generador Reporte", "final_report_generator.py"),
+                ("Gráficas por Consideración", "prospective_simulation_byconsideration.py")
             ]
             
             progress_bar = st.progress(0)
@@ -454,6 +456,7 @@ elif st.session_state.step == 5:
         if os.path.exists(pdf_path):
             with open(pdf_path, "rb") as f:
                 st.download_button("📄 Descargar Resumen Ejecutivo (PDF)", f, "Resumen_Recomendaciones_IPP.pdf", "application/pdf")
+
     
     with col2:
         st.subheader("📂 Carpeta de Resultados")
