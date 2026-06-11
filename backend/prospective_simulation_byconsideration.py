@@ -8,8 +8,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Configuración básica (Debe coincidir con prospect_simulation.py y final_report_generator.py)
-INTERMEDIATE_CONVERGENCE_YEAR = 3 
-YEARS_TO_FORECAST = 15
+INTERMEDIATE_CONVERGENCE_YEAR = 4 
+YEARS_TO_FORECAST = 14
 
 def get_path(filename):
     """Obtiene la ruta absoluta para los archivos de entrada y salida."""
@@ -65,6 +65,29 @@ def generate_plots_by_consideration():
     # Usamos 'seriesCode' como identificador único
     cols_to_merge = ['seriesCode', 'Recomendacion_Final']
     df_merged = pd.merge(df_output, df_report[cols_to_merge], on='seriesCode', how='inner')
+    
+    # Mapear y filtrar por ODS seleccionados
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        links_path = os.path.join(base_dir, "SDG links.csv")
+        if os.path.exists(links_path):
+            df_links = pd.read_csv(links_path)
+            target_to_sdg = dict(zip(df_links['SDG target'].astype(int), df_links['SDG'].astype(int)))
+            
+            # Cargar ODS seleccionados
+            selected_sdgs = list(range(1, 18))
+            selected_sdgs_file = get_path('selected_sdgs.json')
+            if os.path.exists(selected_sdgs_file):
+                import json
+                with open(selected_sdgs_file, 'r') as f:
+                    selected_sdgs = json.load(f)
+                selected_sdgs = [int(x) for x in selected_sdgs]
+            
+            df_merged['sdg_goal'] = df_merged['sdg'].astype(int).map(target_to_sdg)
+            df_merged = df_merged[df_merged['sdg_goal'].isin(selected_sdgs)].drop(columns=['sdg_goal'])
+            df_merged = df_merged.reset_index(drop=True)
+    except Exception as e_filter:
+        print(f"Error al filtrar por ODS seleccionados por consideración: {e_filter}")
 
     # Identificar las columnas que contienen la serie de tiempo (pasos 0 a T_sim-1)
     # En output_baseline.xlsx, estas columnas suelen ser numéricas o strings de números

@@ -12,8 +12,8 @@ warnings.filterwarnings('ignore')
 
 # 1. Configuración de Usuario (Simulación)
 # ---------------------------------------------------------
-YEARS_TO_FORECAST = 15 
-INTERMEDIATE_CONVERGENCE_YEAR = 3 
+YEARS_TO_FORECAST = 14 
+INTERMEDIATE_CONVERGENCE_YEAR = 4 
 # ---------------------------------------------------------
 
 def get_path(filename):
@@ -122,6 +122,29 @@ if __name__ == '__main__':
     df_output['goal'] = goals
     df_output['real_goal'] = real_goals
 
+    # Mapear y filtrar por ODS seleccionados
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        links_path = os.path.join(base_dir, "SDG links.csv")
+        if os.path.exists(links_path):
+            df_links = pd.read_csv(links_path)
+            target_to_sdg = dict(zip(df_links['SDG target'].astype(int), df_links['SDG'].astype(int)))
+            
+            # Cargar ODS seleccionados
+            selected_sdgs = list(range(1, 18))
+            selected_sdgs_file = get_path('selected_sdgs.json')
+            if os.path.exists(selected_sdgs_file):
+                import json
+                with open(selected_sdgs_file, 'r') as f:
+                    selected_sdgs = json.load(f)
+                selected_sdgs = [int(x) for x in selected_sdgs]
+            
+            df_output['sdg_goal'] = df_output['sdg'].astype(int).map(target_to_sdg)
+            df_output = df_output[df_output['sdg_goal'].isin(selected_sdgs)].drop(columns=['sdg_goal'])
+            df_output = df_output.reset_index(drop=True)
+    except Exception as e_filter:
+        print(f"Error al filtrar por ODS seleccionados: {e_filter}")
+
     df_output.to_excel(get_path('output_baseline.xlsx'), index=False)
 
     try:
@@ -130,13 +153,13 @@ if __name__ == '__main__':
         # ---------------------------------------------------------
         # Dividir indicadores en N grupos para no exceder 50 por gráfica
         max_per_plot = 50
-        num_plots = int(np.ceil(N / max_per_plot))
-        per_plot = int(np.ceil(N / num_plots))
+        num_plots = int(np.ceil(len(df_output) / max_per_plot))
+        per_plot = int(np.ceil(len(df_output) / num_plots))
         
         groups = []
         for i in range(num_plots):
             start = i * per_plot
-            end = min((i + 1) * per_plot, N)
+            end = min((i + 1) * per_plot, len(df_output))
             groups.append((start, end, f'part_{i+1}'))
 
         for start, end, label in groups:

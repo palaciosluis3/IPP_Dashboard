@@ -10,8 +10,8 @@ import sys
 QM_PERSISTENT = 0.4248
 RL_PERSISTENT = 0.5383
 GROWTH_PERSISTENT = 25.0
-YEARS_PERSISTENT = 15
-INTER_YEAR_PERSISTENT = 3
+YEARS_PERSISTENT = 14
+INTER_YEAR_PERSISTENT = 4
 
 # --- CONFIGURACIÓN DE PÁGINA Y ESTILO ---
 st.set_page_config(
@@ -239,7 +239,7 @@ def update_script_config(file_path, replacements):
 # Sidebar: Progreso y Referencias
 with st.sidebar:
     st.title("Progreso del Proceso")
-    steps_labels = ["📁 Carga de Datos", "🏛️ Gobernanza", "⚙️ Parámetros IPP", "🚀 Ejecución", "📊 Resultados"]
+    steps_labels = ["📁 Carga de Datos", "🏛️ Gobernanza", "⚙️ Parámetros IPP", "🎯 ODS a Graficar", "🚀 Ejecución", "📊 Resultados"]
     for i, label in enumerate(steps_labels):
         if st.session_state.step == i + 1:
             st.markdown(f"**👉 {label}**")
@@ -386,9 +386,80 @@ elif st.session_state.step == 3:
             next_step()
             st.rerun()
 
-# --- PASO 4: EJECUCIÓN ---
+# --- PASO 4: ODS A GRAFICAR ---
 elif st.session_state.step == 4:
-    st.markdown('<div class="step-box"><h3>Paso 4: Ejecución del Motor IPP</h3><p>El sistema procesará los datos, calibrará el modelo y ejecutará las simulaciones.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-box"><h3>Paso 4: Selección de ODS a Graficar y Reportar</h3><p>Selecciona los Objetivos de Desarrollo Sostenible (ODS) cuyos indicadores deseas incluir en las gráficas y reportes finales. El modelo siempre correrá internamente con todo el set de indicadores para preservar las interdependencias.</p></div>', unsafe_allow_html=True)
+    
+    ODS_NAMES = {
+        1: "ODS 1: Fin de la Pobreza",
+        2: "ODS 2: Hambre Cero",
+        3: "ODS 3: Salud y Bienestar",
+        4: "ODS 4: Educación de Calidad",
+        5: "ODS 5: Igualdad de Género",
+        6: "ODS 6: Agua Limpia y Saneamiento",
+        7: "ODS 7: Energía Asequible y No Contaminante",
+        8: "ODS 8: Trabajo Decente y Crecimiento Económico",
+        9: "ODS 9: Industria, Innovación e Infraestructura",
+        10: "ODS 10: Reducción de las Desigualdades",
+        11: "ODS 11: Ciudades y Comunidades Sostenibles",
+        12: "ODS 12: Producción y Consumo Responsables",
+        13: "ODS 13: Acción por el Clima",
+        14: "ODS 14: Vida Submarina",
+        15: "ODS 15: Vida de Ecosistemas Terrestres",
+        16: "ODS 16: Paz, Justicia e Instituciones Sólidas",
+        17: "ODS 17: Alianzas para lograr los Objetivos"
+    }
+    
+    # Inicializar estado si no existe
+    for ods_id in ODS_NAMES.keys():
+        cb_key = f"ods_{ods_id}"
+        if cb_key not in st.session_state:
+            st.session_state[cb_key] = True
+            
+    # Función para marcar/desmarcar todos
+    def toggle_all(select):
+        for ods_id in ODS_NAMES.keys():
+            st.session_state[f"ods_{ods_id}"] = select
+
+    col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 7])
+    with col_btn1:
+        if st.button("Marcar Todos", use_container_width=True):
+            toggle_all(True)
+            st.rerun()
+    with col_btn2:
+        if st.button("Desmarcar Todos", use_container_width=True):
+            toggle_all(False)
+            st.rerun()
+            
+    cols = st.columns(3)
+    selected_list = []
+    for ods_id, ods_name in ODS_NAMES.items():
+        col_idx = (ods_id - 1) % 3
+        with cols[col_idx]:
+            cb_key = f"ods_{ods_id}"
+            val = st.checkbox(ods_name, key=cb_key)
+            if val:
+                selected_list.append(ods_id)
+                
+    c1, c2 = st.columns([1, 5])
+    with c1:
+        if st.button("⬅️ Atrás"): prev_step(); st.rerun()
+    with c2:
+        if st.button("Guardar Selección y Continuar ➡️"):
+            if not selected_list:
+                st.error("Debes seleccionar al menos un ODS para graficar.")
+            else:
+                import json
+                selected_sdgs_file = get_path("selected_sdgs.json", folder="Outputs")
+                os.makedirs(os.path.dirname(selected_sdgs_file), exist_ok=True)
+                with open(selected_sdgs_file, 'w', encoding='utf-8') as f:
+                    json.dump(selected_list, f)
+                next_step()
+                st.rerun()
+
+# --- PASO 5: EJECUCIÓN ---
+elif st.session_state.step == 5:
+    st.markdown('<div class="step-box"><h3>Paso 5: Ejecución del Motor IPP</h3><p>El sistema procesará los datos, calibrará el modelo y ejecutará las simulaciones.</p></div>', unsafe_allow_html=True)
     
     c1, c2 = st.columns([1, 5])
     with c1:
@@ -466,9 +537,9 @@ elif st.session_state.step == 4:
             next_step()
             st.rerun()
 
-# --- PASO 5: RESULTADOS ---
-elif st.session_state.step == 5:
-    st.markdown('<div class="step-box"><h3>Paso 5: Resultados y Reportes Ejecutivos</h3><p>Descarga tus archivos finales y consulta la carpeta de resultados para el análisis detallado.</p></div>', unsafe_allow_html=True)
+# --- PASO 6: RESULTADOS ---
+elif st.session_state.step == 6:
+    st.markdown('<div class="step-box"><h3>Paso 6: Resultados y Reportes Ejecutivos</h3><p>Descarga tus archivos finales y consulta la carpeta de resultados para el análisis detallado.</p></div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1])
     with col1:

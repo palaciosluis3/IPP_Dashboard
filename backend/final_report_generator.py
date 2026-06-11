@@ -51,6 +51,29 @@ def generate_report():
     
     # Unificar todas las columnas de raw_indicators
     df_master = pd.merge(df_raw, df_indis_prep.drop(columns=['seriesName', 'color', 'instrumental', 'sdg'], errors='ignore'), on='seriesCode', how='left')
+    
+    # Mapear y filtrar por ODS seleccionados
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        links_path = os.path.join(base_dir, "SDG links.csv")
+        if os.path.exists(links_path):
+            df_links = pd.read_csv(links_path)
+            target_to_sdg = dict(zip(df_links['SDG target'].astype(int), df_links['SDG'].astype(int)))
+            
+            # Cargar ODS seleccionados
+            selected_sdgs = list(range(1, 18))
+            selected_sdgs_file = get_path('selected_sdgs.json')
+            if os.path.exists(selected_sdgs_file):
+                import json
+                with open(selected_sdgs_file, 'r') as f:
+                    selected_sdgs = json.load(f)
+                selected_sdgs = [int(x) for x in selected_sdgs]
+            
+            df_master['sdg_goal'] = df_master['sdg_target'].astype(int).map(target_to_sdg)
+            df_master = df_master[df_master['sdg_goal'].isin(selected_sdgs)].drop(columns=['sdg_goal'])
+            df_master = df_master.reset_index(drop=True)
+    except Exception as e_filter:
+        print(f"Error al filtrar por ODS seleccionados en reporte: {e_filter}")
 
     # Calcular Índice de Calibración
     historical_years = [col for col in df_raw.columns if str(col).isnumeric()]
