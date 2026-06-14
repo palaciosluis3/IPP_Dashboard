@@ -10,7 +10,7 @@ import sys
 QM_PERSISTENT = 0.4248
 RL_PERSISTENT = 0.5383
 GROWTH_PERSISTENT = 25.0
-YEARS_PERSISTENT = 14
+YEARS_PERSISTENT = 15
 INTER_YEAR_PERSISTENT = 4
 
 # --- CONFIGURACIÓN DE PÁGINA Y ESTILO ---
@@ -554,6 +554,11 @@ elif st.session_state.step == 6:
         if os.path.exists(pdf_path):
             with open(pdf_path, "rb") as f:
                 st.download_button("📄 Descargar Resumen Ejecutivo (PDF)", f, "Resumen_Recomendaciones_IPP.pdf", "application/pdf")
+        
+        md_path = get_path("Resumen_Recomendaciones_IPP.md")
+        if os.path.exists(md_path):
+            with open(md_path, "rb") as f:
+                st.download_button("📝 Descargar Resumen Ejecutivo (Markdown)", f, "Resumen_Recomendaciones_IPP.md", "text/markdown")
 
     
     with col2:

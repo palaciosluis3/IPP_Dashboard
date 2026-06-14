@@ -12,9 +12,9 @@ warnings.filterwarnings('ignore')
 
 # 1. Configuración de Usuario (Escenario de Crecimiento Presupuestal)
 # ---------------------------------------------------------
-YEARS_TO_FORECAST = 14 
+YEARS_TO_FORECAST = 15 
 INTERMEDIATE_CONVERGENCE_YEAR = 4 
-BUDGET_GROWTH_FACTOR = 4.5 
+BUDGET_GROWTH_FACTOR = 4.75 
 # ---------------------------------------------------------
 
 def get_path(filename):

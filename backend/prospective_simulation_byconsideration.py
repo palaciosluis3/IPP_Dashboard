@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore')
 
 # Configuración básica (Debe coincidir con prospect_simulation.py y final_report_generator.py)
 INTERMEDIATE_CONVERGENCE_YEAR = 4 
-YEARS_TO_FORECAST = 14
+YEARS_TO_FORECAST = 15
 
 def get_path(filename):
     """Obtiene la ruta absoluta para los archivos de entrada y salida."""

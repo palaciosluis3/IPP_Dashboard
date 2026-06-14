@@ -35,6 +35,7 @@ file_baseline = get_path('output_baseline.xlsx')
 file_increase = get_path('output_increase.xlsx')
 file_report = get_path('final_report_IPP.xlsx')
 file_pdf = get_path('Resumen_Recomendaciones_IPP.pdf')
+file_md = get_path('Resumen_Recomendaciones_IPP.md')
 
 def generate_report():
     print("Iniciando generación de reporte final y tabla resumen...")
@@ -171,6 +172,12 @@ def generate_report():
     except Exception as e:
         print(f"Error generando PDF: {e}")
 
+    # 3. Generación de Reporte Markdown
+    try:
+        generate_markdown_report(cat_green, cat_yellow, cat_red)
+    except Exception as e:
+        print(f"Error generando MD: {e}")
+
 def wrap_text(text, font, max_width, draw):
     words = str(text).split()
     lines = []
@@ -276,6 +283,44 @@ def generate_visual_table(green, yellow, red):
 
     img.save(file_pdf, "PDF", resolution=150.0)
     print(f"PDF generado dinámicamente: {file_pdf}")
+
+def generate_markdown_report(green, yellow, red):
+    print("Creando reporte Markdown con recomendaciones...")
+    lines = [
+        "# Resumen de Recomendaciones IPP",
+        "",
+        "## Continuar con programas actuales",
+    ]
+    if green:
+        for item in green:
+            lines.append(f"- {item}")
+    else:
+        lines.append("*No hay indicadores en esta categoría.*")
+        
+    lines.extend([
+        "",
+        "## Programas escalables",
+    ])
+    if yellow:
+        for item in yellow:
+            lines.append(f"- {item}")
+    else:
+        lines.append("*No hay indicadores en esta categoría.*")
+        
+    lines.extend([
+        "",
+        "## Revisar diseño y/o implementación en busca de cuellos de botella",
+    ])
+    if red:
+        for item in red:
+            lines.append(f"- {item}")
+    else:
+        lines.append("*No hay indicadores en esta categoría.*")
+    lines.append("")
+    
+    with open(file_md, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    print(f"Reporte MD generado: {file_md}")
 
 if __name__ == "__main__":
     generate_report()
