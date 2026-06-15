@@ -97,7 +97,8 @@ def generate_report():
     for _, row in df_master.iterrows():
         code = row['seriesCode']
         name = row['seriesName']
-        goal = row['goals']
+        # Usamos la meta REAL del gobierno (no la meta inflada que solo evita el error de IPP)
+        goal = row['real_goals']
         
         # Columnas de tiempo
         time_cols = [col for col in df_base.columns if str(col).startswith('t_') or str(col).isnumeric() or isinstance(col, int)]

@@ -122,14 +122,18 @@ if __name__ == '__main__':
     df_output['goal'] = goals
     df_output['real_goal'] = real_goals
 
-    # Mapear y filtrar por ODS seleccionados
+    # Guardar SIEMPRE el set completo de indicadores (sin filtrar por ODS).
+    # Esto permite regenerar gráficos para cualquier selección de ODS sin recalibrar.
+    df_output.to_excel(get_path('output_baseline.xlsx'), index=False)
+
+    # Mapear y filtrar por ODS seleccionados (solo en memoria, para las gráficas)
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         links_path = os.path.join(base_dir, "SDG links.csv")
         if os.path.exists(links_path):
             df_links = pd.read_csv(links_path)
             target_to_sdg = dict(zip(df_links['SDG target'].astype(int), df_links['SDG'].astype(int)))
-            
+
             # Cargar ODS seleccionados
             selected_sdgs = list(range(1, 18))
             selected_sdgs_file = get_path('selected_sdgs.json')
@@ -138,14 +142,12 @@ if __name__ == '__main__':
                 with open(selected_sdgs_file, 'r') as f:
                     selected_sdgs = json.load(f)
                 selected_sdgs = [int(x) for x in selected_sdgs]
-            
+
             df_output['sdg_goal'] = df_output['sdg'].astype(int).map(target_to_sdg)
             df_output = df_output[df_output['sdg_goal'].isin(selected_sdgs)].drop(columns=['sdg_goal'])
             df_output = df_output.reset_index(drop=True)
     except Exception as e_filter:
         print(f"Error al filtrar por ODS seleccionados: {e_filter}")
-
-    df_output.to_excel(get_path('output_baseline.xlsx'), index=False)
 
     try:
         import matplotlib.pyplot as plt
@@ -240,9 +242,9 @@ if __name__ == '__main__':
         all_vals = df_output.values[:, 3:3+T_sim]
 
         for index, row in df_output.iterrows():
-            # Aseguramos usar la columna correcta
-            meta = row.goal if 'goal' in row else row.get('goalge', 0)
-            
+            # Usamos la meta REAL del gobierno (no la meta inflada que solo evita el error de IPP)
+            meta = row.real_goal if 'real_goal' in row else row.goal
+
             reaches = np.where(all_vals[index] >= meta)[0]
             if len(reaches) > 0 and reaches[0]/calibration_index <= INTERMEDIATE_CONVERGENCE_YEAR:
                 on_time.append(index)

@@ -205,6 +205,9 @@ if 'last_mile' not in st.session_state: st.session_state.last_mile = 0.90
 
 if 'processing_done' not in st.session_state: st.session_state.processing_done = False
 
+# Modo de ejecución: 'full' = pipeline completo, 'graphics' = solo regenerar gráficos
+if 'mode' not in st.session_state: st.session_state.mode = 'full'
+
 def next_step(): st.session_state.step += 1
 def prev_step(): st.session_state.step -= 1
 
@@ -239,14 +242,26 @@ def update_script_config(file_path, replacements):
 # Sidebar: Progreso y Referencias
 with st.sidebar:
     st.title("Progreso del Proceso")
-    steps_labels = ["📁 Carga de Datos", "🏛️ Gobernanza", "⚙️ Parámetros IPP", "🎯 ODS a Graficar", "🚀 Ejecución", "📊 Resultados"]
-    for i, label in enumerate(steps_labels):
-        if st.session_state.step == i + 1:
-            st.markdown(f"**👉 {label}**")
-        elif st.session_state.step > i + 1:
-            st.markdown(f"✅ {label}")
-        else:
-            st.markdown(f"⚪ {label}")
+    if st.session_state.mode == 'graphics':
+        # Flujo reducido: Inicio -> ODS -> Generación -> Resultados (pasos 1, 4, 5, 6)
+        st.caption("Modo: Generación de gráficos únicamente")
+        graphics_steps = [(1, "🏠 Inicio"), (4, "🎯 ODS a Graficar"), (5, "🚀 Generación"), (6, "📊 Resultados")]
+        for step_num, label in graphics_steps:
+            if st.session_state.step == step_num:
+                st.markdown(f"**👉 {label}**")
+            elif st.session_state.step > step_num:
+                st.markdown(f"✅ {label}")
+            else:
+                st.markdown(f"⚪ {label}")
+    else:
+        steps_labels = ["📁 Carga de Datos", "🏛️ Gobernanza", "⚙️ Parámetros IPP", "🎯 ODS a Graficar", "🚀 Ejecución", "📊 Resultados"]
+        for i, label in enumerate(steps_labels):
+            if st.session_state.step == i + 1:
+                st.markdown(f"**👉 {label}**")
+            elif st.session_state.step > i + 1:
+                st.markdown(f"✅ {label}")
+            else:
+                st.markdown(f"⚪ {label}")
     
     st.markdown("---")
     if st.button("🔄 Reiniciar Aplicación", use_container_width=True):
@@ -290,14 +305,34 @@ if st.session_state.step == 1:
                     st.download_button("💰 Plantilla Presupuesto", f, "raw_expenditure.xlsx")
     st.markdown("---")
 
+    # --- ATAJO: GENERACIÓN DE GRÁFICOS ÚNICAMENTE ---
+    # Reutiliza la calibración/simulaciones ya guardadas en Outputs y salta directo
+    # a la selección de ODS, sin volver a correr el motor completo.
+    baseline_exists = os.path.exists(get_path("output_baseline.xlsx"))
+    increase_exists = os.path.exists(get_path("output_increase.xlsx"))
+    prev_run_exists = baseline_exists and increase_exists
+
+    st.markdown('<div class="step-box" style="border-left-color:#0D9488;"><h4>⚡ Generación de gráficos únicamente</h4><p>¿Ya corriste el proceso completo antes? Cambia los ODS a graficar y regenera todas las gráficas y reportes <b>sin recalibrar ni volver a simular</b> (usa los resultados guardados en <code>Outputs</code>).</p></div>', unsafe_allow_html=True)
+    if prev_run_exists:
+        if st.button("📊 Ir a generar gráficos (usar resultados existentes)"):
+            st.session_state.mode = 'graphics'
+            st.session_state.step = 4
+            st.rerun()
+    else:
+        st.info("ℹ️ Aún no hay resultados previos en `Outputs`. Primero ejecuta el proceso completo al menos una vez.")
+
+    st.markdown("---")
+    st.markdown('<h4>🚀 Proceso completo (calibración + simulación)</h4>', unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
         ind_file = st.file_uploader("Sube raw_indicators.xlsx", type=["xlsx"])
     with col2:
         exp_file = st.file_uploader("Sube raw_expenditure.xlsx", type=["xlsx"])
-    
+
     if ind_file and exp_file:
         if st.button("Guardar y Continuar ➡️"):
+            st.session_state.mode = 'full'
             with open(get_path("raw_indicators.xlsx"), "wb") as f:
                 f.write(ind_file.getbuffer())
             with open(get_path("raw_expenditure.xlsx"), "wb") as f:
@@ -382,6 +417,7 @@ elif st.session_state.step == 3:
             update_script_config(get_path("prospective_simulation.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("prospective_simulation_increase.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year, "BUDGET_GROWTH_FACTOR": total_growth_factor})
             update_script_config(get_path("prospective_simulation_byconsideration.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
+            update_script_config(get_path("graphics_only.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("final_report_generator.py", folder="backend"), {"ULTIMA_MILLA_THRESHOLD": st.session_state.last_mile, "ELASTICITY_THRESHOLD": st.session_state.elastic})
             next_step()
             st.rerun()
@@ -443,7 +479,10 @@ elif st.session_state.step == 4:
                 
     c1, c2 = st.columns([1, 5])
     with c1:
-        if st.button("⬅️ Atrás"): prev_step(); st.rerun()
+        if st.button("⬅️ Atrás"):
+            # En modo gráficos, el paso anterior es el Inicio (paso 1)
+            st.session_state.step = 1 if st.session_state.mode == 'graphics' else st.session_state.step - 1
+            st.rerun()
     with c2:
         if st.button("Guardar Selección y Continuar ➡️"):
             if not selected_list:
@@ -459,76 +498,114 @@ elif st.session_state.step == 4:
 
 # --- PASO 5: EJECUCIÓN ---
 elif st.session_state.step == 5:
-    st.markdown('<div class="step-box"><h3>Paso 5: Ejecución del Motor IPP</h3><p>El sistema procesará los datos, calibrará el modelo y ejecutará las simulaciones.</p></div>', unsafe_allow_html=True)
-    
+    is_graphics = st.session_state.mode == 'graphics'
+
+    if is_graphics:
+        st.markdown('<div class="step-box"><h3>Paso 5: Generación de Gráficos</h3><p>El sistema regenerará todas las gráficas y reportes para los ODS seleccionados, reutilizando la calibración y simulaciones ya guardadas en <code>Outputs</code> (sin recalibrar ni volver a simular).</p></div>', unsafe_allow_html=True)
+        run_button_label = "📊 GENERAR GRÁFICOS"
+    else:
+        st.markdown('<div class="step-box"><h3>Paso 5: Ejecución del Motor IPP</h3><p>El sistema procesará los datos, calibrará el modelo y ejecutará las simulaciones.</p></div>', unsafe_allow_html=True)
+        run_button_label = "🚀 INICIAR PROCESAMIENTO COMPLETO"
+
+    # Listas de scripts según el modo
+    GRAPHICS_SCRIPTS = [
+        ("Generación de Gráficos", "graphics_only.py")
+    ]
+    FULL_SCRIPTS = [
+        ("Prep. Indicadores", "indicators_preparation.py"),
+        ("Redes Interdep.", "interdependency_networks.py"),
+        ("Prep. Presupuesto", "expenditure_preparation.py"),
+        ("CALIBRACIÓN", "model_calibration.py"),
+        ("Simulación Base", "prospective_simulation.py"),
+        ("Escenario Aumento", "prospective_simulation_increase.py"),
+        ("Generador Reporte", "final_report_generator.py"),
+        ("Gráficas por Consideración", "prospective_simulation_byconsideration.py")
+    ]
+
+    def execute_scripts(scripts):
+        """Ejecuta secuencialmente la lista de scripts mostrando el log en vivo."""
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        # Creamos un contenedor dedicado para el log con altura fija
+        log_container = st.empty()
+
+        full_log = ""
+
+        for i, (name, file) in enumerate(scripts):
+            status_text.markdown(f"### ⚙️ {name}")
+
+            # Ejecución capturando stdout y stderr en tiempo real de forma robusta
+            process = subprocess.Popen(
+                [sys.executable, "-u", get_path(file, folder="backend")],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                errors='replace' # Reemplaza caracteres que no puede decodificar en lugar de fallar
+            )
+
+            current_script_log = f"--- INICIANDO PROTOCOLO: {name.upper()} ---\n"
+
+            # Leemos línea a línea para que Streamlit se actualice
+            for line in iter(process.stdout.readline, ""):
+                if line:
+                    current_script_log += line
+                    # Mostramos solo las últimas 20 líneas para evitar saturar la UI
+                    lines = current_script_log.splitlines()
+                    display_log = "\n".join(lines[-20:])
+                    log_container.code(display_log)
+                    full_log += line
+
+            process.wait()
+            if process.returncode != 0:
+                st.error(f"❌ Error crítico en {name}. El proceso se detuvo.")
+                st.warning("💡 Si el error menciona **'Permission denied'**, probablemente dejaste abierto un archivo de resultados (PDF o Excel) de la carpeta `Outputs`. Ciérralo e inténtalo de nuevo.")
+                st.code(current_script_log) # Mostrar todo el log del error
+                st.stop()
+
+            progress_bar.progress((i + 1) / len(scripts))
+            time.sleep(0.5)
+
+        st.session_state.processing_done = True
+
+    @st.dialog("⚠️ Cierra los archivos de resultados")
+    def confirm_graphics_dialog():
+        st.warning("Antes de regenerar, **cierra todos los archivos de resultados que tengas abiertos** de la carpeta `Outputs` (los PDF de gráficas, el reporte Excel, el resumen, etc.).")
+        st.markdown("Si alguno está abierto, Windows impedirá sobrescribirlo y la generación **fallará**.")
+        d1, d2 = st.columns(2)
+        with d1:
+            if st.button("❌ Cancelar", use_container_width=True):
+                st.rerun()
+        with d2:
+            if st.button("✅ Confirmar y generar", use_container_width=True):
+                st.session_state.run_graphics_confirmed = True
+                st.rerun()
+
     c1, c2 = st.columns([1, 5])
     with c1:
         if st.button("⬅️ Atrás"): prev_step(); st.rerun()
     with c2:
-        if st.button("🚀 INICIAR PROCESAMIENTO COMPLETO"):
-            # Persistir parámetros en el código de app.py para la próxima sesión
-            update_script_config(__file__, {
-                "QM_PERSISTENT": st.session_state.qm,
-                "RL_PERSISTENT": st.session_state.rl,
-                "GROWTH_PERSISTENT": st.session_state.annual_growth,
-                "YEARS_PERSISTENT": st.session_state.years_sim,
-                "INTER_YEAR_PERSISTENT": st.session_state.inter_year
-            })
-            
-            scripts = [
-                ("Prep. Indicadores", "indicators_preparation.py"),
-                ("Redes Interdep.", "interdependency_networks.py"),
-                ("Prep. Presupuesto", "expenditure_preparation.py"),
-                ("CALIBRACIÓN", "model_calibration.py"),
-                ("Simulación Base", "prospective_simulation.py"),
-                ("Escenario Aumento", "prospective_simulation_increase.py"),
-                ("Generador Reporte", "final_report_generator.py"),
-                ("Gráficas por Consideración", "prospective_simulation_byconsideration.py")
-            ]
-            
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            # Creamos un contenedor dedicado para el log con altura fija
-            log_container = st.empty()
-            
-            full_log = ""
+        if st.button(run_button_label):
+            if is_graphics:
+                # Pedimos confirmación (modal) para recordar cerrar los archivos abiertos
+                confirm_graphics_dialog()
+            else:
+                # Persistir parámetros en el código de app.py para la próxima sesión
+                update_script_config(__file__, {
+                    "QM_PERSISTENT": st.session_state.qm,
+                    "RL_PERSISTENT": st.session_state.rl,
+                    "GROWTH_PERSISTENT": st.session_state.annual_growth,
+                    "YEARS_PERSISTENT": st.session_state.years_sim,
+                    "INTER_YEAR_PERSISTENT": st.session_state.inter_year
+                })
+                execute_scripts(FULL_SCRIPTS)
+                st.rerun()
 
-            for i, (name, file) in enumerate(scripts):
-                status_text.markdown(f"### ⚙️ {name}")
-                
-                # Ejecución capturando stdout y stderr en tiempo real de forma robusta
-                process = subprocess.Popen(
-                    [sys.executable, "-u", get_path(file, folder="backend")], 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.STDOUT, 
-                    text=True, 
-                    bufsize=1,
-                    errors='replace' # Reemplaza caracteres que no puede decodificar en lugar de fallar
-                )
-                
-                current_script_log = f"--- INICIANDO PROTOCOLO: {name.upper()} ---\n"
-                
-                # Leemos línea a línea para que Streamlit se actualice
-                for line in iter(process.stdout.readline, ""):
-                    if line:
-                        current_script_log += line
-                        # Mostramos solo las últimas 20 líneas para evitar saturar la UI
-                        lines = current_script_log.splitlines()
-                        display_log = "\n".join(lines[-20:])
-                        log_container.code(display_log)
-                        full_log += line
-                
-                process.wait()
-                if process.returncode != 0:
-                    st.error(f"❌ Error crítico en {name}. El proceso se detuvo.")
-                    st.code(current_script_log) # Mostrar todo el log del error
-                    st.stop()
-                
-                progress_bar.progress((i + 1) / len(scripts))
-                time.sleep(0.5)
-
-            st.session_state.processing_done = True
-            st.rerun()
+    # Ejecución de gráficos una vez confirmado el modal
+    if st.session_state.get('run_graphics_confirmed'):
+        st.session_state.run_graphics_confirmed = False
+        execute_scripts(GRAPHICS_SCRIPTS)
+        st.rerun()
 
     if st.session_state.processing_done:
         st.success("✅ ¡Todo el procesamiento se completó con éxito!")
