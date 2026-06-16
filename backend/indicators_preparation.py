@@ -130,7 +130,7 @@ insufficient_series = [
 # faltantes usando la pendiente del tramo más cercano (NO se repite la observación
 # más cercana), acotada al intervalo ABIERTO (0, 1) de la escala normalizada.
 # IMPORTANTE: IPP no acepta valores de 0 ni 1 puros, por eso recortamos a (EPS, 1-EPS).
-EPS = 1e-6
+EPS = 1e-4
 def interpolate_extrapolate(row_values):
     y = np.array(row_values, dtype=float)
     n = len(y)
