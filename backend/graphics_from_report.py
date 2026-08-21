@@ -432,32 +432,32 @@ def plot_bars(df, stages, escenario):
         # `annotate` no participa del autoescalado (a diferencia de `plt.arrow`),
         # asi que el limite superior se fija a mano o las flechas se recortan.
         plt.ylim(0, _y_top(start_all[s:e], end_all[s:e],
-                           goal[s:e], has_goal[s:e], headroom=1.14))
+                           goal[s:e], has_goal[s:e], headroom=1.20))
         plt.xlim(-1, num_items)
         plt.gca().set_xticks(range(num_items))
-        plt.gca().set_xticklabels(subset.seriesCode, rotation=90, fontsize=7)
+        plt.gca().set_xticklabels(subset.seriesCode, rotation=90, fontsize=10)
         plt.gca().spines['top'].set_visible(False)
         plt.gca().spines['right'].set_visible(False)
-        plt.ylabel('levels', fontsize=14)
-        plt.xlabel('indicators', fontsize=14)
+        plt.ylabel('niveles', fontsize=14)
+        plt.xlabel('indicadores', fontsize=14)
 
         handles = [
             Line2D([0], [0], color='dimgray', lw=2,
-                   label=f'Nivel proyectado a {YEARS_TO_FORECAST} anios'),
+                   label=f'Nivel proyectado a {YEARS_TO_FORECAST} años'),
             Line2D([0], [0], marker='o', color='none', markerfacecolor='black',
                    markeredgecolor='black', markersize=5,
                    label=f'Meta alcanzada en el periodo de gobierno '
-                         f'(<= {INTERMEDIATE_CONVERGENCE_YEAR} anios)'),
+                         f'(<= {INTERMEDIATE_CONVERGENCE_YEAR} años)'),
             Line2D([0], [0], marker='o', color='none', markerfacecolor='none',
                    markeredgecolor='black', markersize=5,
                    label='Meta no alcanzada a tiempo'),
         ]
-        plt.legend(handles=handles, fontsize=6, frameon=False,
-                   loc='upper right', ncol=3)
+        plt.legend(handles=handles, fontsize=10, frameon=False,
+                   loc='lower center', bbox_to_anchor=(0.5, 1.02), ncol=3)
 
         plt.tight_layout()
-        out = f'Bars_{escenario}_{label}.pdf'
-        plt.savefig(get_path(out))
+        out = f'Bars_{escenario}_{label}.png'
+        plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
         plt.close()
         escritos.append(out)
         print(f"    -> {out} ({num_items} indicadores)")
@@ -516,8 +516,8 @@ def plot_donut_progress(df, escenario):
     _draw_outer_ring(ax, labels, cin)
 
     plt.tight_layout()
-    out = f'Donut_{escenario}.pdf'
-    plt.savefig(get_path(out))
+    out = f'Donut_{escenario}.png'
+    plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
     plt.close()
     print(f"    -> {out}   " + " | ".join(
         f"{l}:{c}" for l, c in zip(
@@ -573,8 +573,8 @@ def plot_donut_convergence_baseline(df, stages):
                      [df.iloc[i].color for i in order])
 
     plt.tight_layout()
-    out = 'Donut_Convergencia_baseline.pdf'
-    plt.savefig(get_path(out))
+    out = 'Donut_Convergencia_baseline.png'
+    plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
     plt.close()
     print(f"    -> {out}")
     return [out]
@@ -675,8 +675,8 @@ def plot_donut_convergence_increase(df, stages):
              ha='center', va='bottom', fontsize=6)
 
     plt.tight_layout(rect=[0, 0.07, 1, 1])
-    out = 'Donut_Convergencia_increase.pdf'
-    plt.savefig(get_path(out))
+    out = 'Donut_Convergencia_increase.png'
+    plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
     plt.close()
     print(f"    -> {out}")
     return [out]
@@ -748,8 +748,8 @@ def plot_by_consideration(df, stages):
             plt.xlabel('indicators', fontsize=12)
             plt.tight_layout()
 
-            out = f'Bars_baseline_by_consideration_{suffix}.pdf'
-            plt.savefig(get_path(out))
+            out = f'Bars_baseline_by_consideration_{suffix}.png'
+            plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
             plt.close()
             escritos.append(out)
             print(f"    -> Guardada en: {out}")

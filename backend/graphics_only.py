@@ -109,7 +109,7 @@ def plot_baseline(df_output, calibration_index, T_sim, historical_years):
         plt.ylabel('levels', fontsize=14)
         plt.xlabel('indicators', fontsize=14)
         plt.tight_layout()
-        plt.savefig(get_path(f'Bars_baseline_{label}.pdf'))
+        plt.savefig(get_path(f'Bars_baseline_{label}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
     # Visualización 3: Dona de Progreso
@@ -146,7 +146,7 @@ def plot_baseline(df_output, calibration_index, T_sim, historical_years):
                      labeldistance=1.17)
     plt.setp(pie2, width=width, edgecolor='none')
     plt.tight_layout()
-    plt.savefig(get_path('Donut_baseline.pdf'))
+    plt.savefig(get_path('Donut_baseline.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
     # Visualización 4: Dona de Convergencia (usando la meta REAL)
@@ -192,7 +192,7 @@ def plot_baseline(df_output, calibration_index, T_sim, historical_years):
                      labeldistance=1.17)
     plt.setp(pie3, width=width, edgecolor='none')
     plt.tight_layout()
-    plt.savefig(get_path('Donut_Convergencia_baseline.pdf'))
+    plt.savefig(get_path('Donut_Convergencia_baseline.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
 
@@ -235,7 +235,7 @@ def plot_increase(df_output, calibration_index, T_sim, historical_years):
         plt.ylabel('levels', fontsize=14)
         plt.xlabel('indicators', fontsize=14)
         plt.tight_layout()
-        plt.savefig(get_path(f'Bars_increase_{label}.pdf'))
+        plt.savefig(get_path(f'Bars_increase_{label}.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
     # Visualización 3: Dona de Progreso
@@ -272,7 +272,7 @@ def plot_increase(df_output, calibration_index, T_sim, historical_years):
                      labeldistance=1.17)
     plt.setp(pie2, width=width, edgecolor='none')
     plt.tight_layout()
-    plt.savefig(get_path('Donut_increase.pdf'))
+    plt.savefig(get_path('Donut_increase.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
     # Visualización 4: Dona de Convergencia (con detección de mejoras), usando meta REAL
@@ -334,7 +334,7 @@ def plot_increase(df_output, calibration_index, T_sim, historical_years):
             texts3[i].set_weight('bold')
             texts3[i].set_fontsize(5)
     plt.tight_layout()
-    plt.savefig(get_path('Donut_Convergencia_increase.pdf'))
+    plt.savefig(get_path('Donut_Convergencia_increase.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
 

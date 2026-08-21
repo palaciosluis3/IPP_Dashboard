@@ -190,7 +190,7 @@ if __name__ == '__main__':
             plt.ylabel('levels', fontsize=14)
             plt.xlabel('indicators', fontsize=14)
             plt.tight_layout()
-            plt.savefig(get_path(f'Bars_baseline_{label}.pdf'))
+            plt.savefig(get_path(f'Bars_baseline_{label}.png'), dpi=300, bbox_inches='tight')
             plt.close()
 
         # Visualización 3: Dona de Progreso (ESTÉTICA ORIGINAL)
@@ -233,7 +233,7 @@ if __name__ == '__main__':
                          labeldistance=1.17)
         plt.setp(pie2, width=width, edgecolor='none')
         plt.tight_layout()
-        plt.savefig(get_path('Donut_baseline.pdf'))
+        plt.savefig(get_path('Donut_baseline.png'), dpi=300, bbox_inches='tight')
         plt.close()
 
         # Visualización 4: Dona de Convergencia (ESTÉTICA ORIGINAL)
@@ -285,10 +285,10 @@ if __name__ == '__main__':
                              labeldistance=1.17)
             plt.setp(pie3, width=width, edgecolor='none')
             plt.tight_layout()
-            plt.savefig(get_path('Donut_Convergencia_baseline.pdf'))
+            plt.savefig(get_path('Donut_Convergencia_baseline.png'), dpi=300, bbox_inches='tight')
             plt.close()
     except Exception as eppdf:
-        print(f"Error generando visualizaciones PDF: {eppdf}")
+        print(f"Error generando visualizaciones: {eppdf}")
         import traceback
         traceback.print_exc()
 

@@ -180,9 +180,9 @@ def generate_plots_by_consideration():
             plt.tight_layout()
             
             # Guardado
-            out_name = f'Bars_baseline_by_consideration_{suffix}.pdf'
+            out_name = f'Bars_baseline_by_consideration_{suffix}.png'
             save_path = get_path(out_name)
-            plt.savefig(save_path)
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
             plt.close()
             print(f"    -> Guardada en: {out_name}")
 
