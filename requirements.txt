@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy>=1.21,<2.0
+matplotlib
+openpyxl
+Pillow
+requests
+scikit-learn
+policy-priority-inference
