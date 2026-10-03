@@ -82,16 +82,20 @@ COL_MEET_INC = 'Cumple Meta_increase'       # ojo: espacio, no guion bajo
 COL_GROWTH_BASE = 'Crecimiento_baseline'
 COL_GROWTH_INC = 'Crecimiento_increase'
 COL_RECO = 'Recomendacion_Final'
+from official_goals import official_goal_data, NO_GOAL_MESSAGE
+from graphics_only import finish_convergence_layout
 
 RECOMMENDATIONS = [
     "Continuar programas",
     "Escalar programas",
     "Revisar los programas asociados",
+    "Sin meta oficial",
 ]
 FILE_SUFFIXES = {
     "Continuar programas": "continuar",
     "Escalar programas": "escalar",
     "Revisar los programas asociados": "revisar",
+    "Sin meta oficial": "sin_meta_oficial",
 }
 
 DONUT_WIDTH = 0.3
@@ -235,11 +239,12 @@ def goal_info(df, stages):
     if not stages['has_goal']:
         return np.zeros(n, dtype=bool), np.full(n, np.nan), np.zeros(n, dtype=bool)
 
-    goal = df[COL_GOAL].astype(float).values
-    has_goal = ~np.isnan(goal)
+    real, available = official_goal_data(df)
+    goal = real.values
+    has_goal = available.values
 
     if stages['has_ontime']:
-        on_time = (df[COL_ONTIME].fillna(0).astype(float).values == 1) & has_goal
+        on_time = (pd.to_numeric(df[COL_ONTIME], errors='coerce').values == 1) & has_goal
     else:
         on_time = np.zeros(n, dtype=bool)
 
@@ -278,7 +283,7 @@ def check_availability(df):
     print(f"  Indicadores cargados: {n}")
 
     if stages['has_goal']:
-        con_meta = int(df[COL_GOAL].notna().sum())
+        con_meta = int(official_goal_data(df)[1].sum())
         print(f"  Con meta ('{COL_GOAL}'): {con_meta}   |   Sin meta: {n - con_meta}")
         if con_meta == 0:
             print("  [!] Ningun indicador tiene meta: se omiten las donas de convergencia.")
@@ -383,7 +388,7 @@ def _draw_outer_ring(ax, codes, colors):
         np.ones(len(codes)), radius=1, colors=list(colors), labels=list(codes),
         rotatelabels=True, counterclock=False, startangle=90,
         textprops=dict(va="center", ha='center', rotation_mode='anchor',
-                       fontsize=5, color='black'),
+                       fontsize=6, color='black'),
         labeldistance=1.17)
     plt.setp(pie, width=DONUT_WIDTH, edgecolor='none')
     return texts
@@ -538,14 +543,17 @@ def plot_donut_convergence_baseline(df, stages):
     afecta a indicadores que convergen justo al final del periodo.
     """
     print("Generando dona de convergencia del escenario base...")
+    previous = get_path('Donut_Convergencia_baseline.png')
+    if os.path.exists(previous):
+        os.remove(previous)
     if not stages['has_goal']:
-        print("  [!] Sin metas disponibles; se omite.")
+        print(NO_GOAL_MESSAGE + f' ({len(df)} indicadores sin meta oficial)')
         return []
 
     has_goal, _goal, on_time = goal_info(df, stages)
 
     if stages['has_meet_base']:
-        meets = df[COL_MEET_BASE].fillna(0).astype(float).values == 1
+        meets = pd.to_numeric(df[COL_MEET_BASE], errors='coerce').fillna(0).values == 1
     else:
         meets = on_time.copy()
         print(f"  [i] Sin '{COL_MEET_BASE}': 'Tarde' quedara vacio.")
@@ -555,24 +563,24 @@ def plot_donut_convergence_baseline(df, stages):
     idx_unfeas = [i for i in range(len(df)) if has_goal[i] and not meets[i]]
     idx_nogoal = [i for i in range(len(df)) if not has_goal[i]]
 
-    counts = [len(idx_ontime), len(idx_late), len(idx_unfeas), len(idx_nogoal)]
+    counts = [len(idx_ontime), len(idx_late), len(idx_unfeas)]
     print(f"  Diagnostico Convergencia (base): A tiempo={counts[0]}, "
-          f"Tarde={counts[1]}, Inviable={counts[2]}, Sin meta={counts[3]}")
+          f"Tarde={counts[1]}, Inviable={counts[2]}, Sin meta (excluidos)={len(idx_nogoal)}")
     if sum(counts) == 0:
         return []
 
     fig = plt.figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
     ax.axis('equal')
-    _draw_donut(ax, counts, convergence_labels(df, has_goal),
-                CONV_COLORS, legend_fontsize=CONV_LEGEND_FONTSIZE,
-                hatches=CONV_HATCHES)
+    _draw_donut(ax, counts, convergence_labels(df, has_goal)[:3],
+                CONV_COLORS[:3], legend_fontsize=CONV_LEGEND_FONTSIZE,
+                hatches=CONV_HATCHES[:3])
 
-    order = idx_ontime + idx_late + idx_unfeas + idx_nogoal
+    order = idx_ontime + idx_late + idx_unfeas
     _draw_outer_ring(ax, [df.iloc[i].seriesCode for i in order],
                      [df.iloc[i].color for i in order])
 
-    plt.tight_layout()
+    finish_convergence_layout(fig, sum(counts), len(idx_nogoal))
     out = 'Donut_Convergencia_baseline.png'
     plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
     plt.close()
@@ -606,16 +614,19 @@ def plot_donut_convergence_increase(df, stages):
     alcanza cae en 'tardia' (lectura conservadora).
     """
     print("Generando dona de convergencia del escenario de aumento...")
+    previous = get_path('Donut_Convergencia_increase.png')
+    if os.path.exists(previous):
+        os.remove(previous)
     if not stages['has_goal']:
-        print("  [!] Sin metas disponibles; se omite.")
+        print(NO_GOAL_MESSAGE + f' ({len(df)} indicadores sin meta oficial)')
         return []
     if not stages['has_meet_inc']:
         print(f"  [!] Sin columna '{COL_MEET_INC}'; se omite.")
         return []
 
     has_goal, _goal, on_time_base = goal_info(df, stages)
-    meets_inc = df[COL_MEET_INC].fillna(0).astype(float).values == 1
-    meets_base = (df[COL_MEET_BASE].fillna(0).astype(float).values == 1
+    meets_inc = pd.to_numeric(df[COL_MEET_INC], errors='coerce').fillna(0).values == 1
+    meets_base = (pd.to_numeric(df[COL_MEET_BASE], errors='coerce').fillna(0).values == 1
                   if stages['has_meet_base'] else np.zeros(len(df), dtype=bool))
 
     if not stages['has_ontime']:
@@ -641,40 +652,28 @@ def plot_donut_convergence_increase(df, stages):
               + (f" -> {[df.iloc[i].seriesCode for i in jumpers]}" if jumpers else "")
               + " -> se clasifican como convergencia tardia.")
 
-    counts = [len(idx_ontime), len(idx_late), len(idx_unfeas), len(idx_nogoal)]
+    counts = [len(idx_ontime), len(idx_late), len(idx_unfeas)]
     print(f"  Diagnostico Convergencia (aumento): A tiempo={counts[0]}, "
-          f"Tarde={counts[1]}, Inviable={counts[2]}, Sin meta={counts[3]}")
+          f"Tarde={counts[1]}, Inviable={counts[2]}, Sin meta (excluidos)={len(idx_nogoal)}")
     if sum(counts) == 0:
         return []
 
     fig = plt.figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
     ax.axis('equal')
-    _draw_donut(ax, counts, convergence_labels(df, has_goal),
-                CONV_COLORS, legend_fontsize=CONV_LEGEND_FONTSIZE,
-                hatches=CONV_HATCHES)
+    _draw_donut(ax, counts, convergence_labels(df, has_goal)[:3],
+                CONV_COLORS[:3], legend_fontsize=CONV_LEGEND_FONTSIZE,
+                hatches=CONV_HATCHES[:3])
 
-    order = idx_ontime + idx_late + idx_unfeas + idx_nogoal
+    order = idx_ontime + idx_late + idx_unfeas
     texts = _draw_outer_ring(ax, [df.iloc[i].seriesCode for i in order],
                              [df.iloc[i].color for i in order])
     for i, orig in enumerate(order):
         if orig in jumpers and i < len(texts):
             texts[i].set_color('green')
             texts[i].set_weight('bold')
-            texts[i].set_fontsize(5)
 
-    # Nota al pie, no titulo: a radio 1.17 las etiquetas del anillo exterior
-    # invaden la zona del titulo.
-    fig.text(0.5, 0.015,
-             'Convergencia con aumento presupuestal. El tiempo se deriva del '
-             'escenario base asumiendo que mas presupuesto nunca desacelera un\n'
-             'indicador: quien llega a tiempo en la base llega a tiempo aqui; '
-             'el resto de los que alcanzan la meta se clasifica como tardio.\n'
-             'En verde, los indicadores que no alcanzaban la meta en la base y '
-             'si con el aumento.',
-             ha='center', va='bottom', fontsize=6)
-
-    plt.tight_layout(rect=[0, 0.07, 1, 1])
+    finish_convergence_layout(fig, sum(counts), len(idx_nogoal))
     out = 'Donut_Convergencia_increase.png'
     plt.savefig(get_path(out), dpi=300, bbox_inches='tight')
     plt.close()
@@ -778,6 +777,7 @@ def generate_summary_documents(df, stages):
     green = buckets["Continuar programas"]
     yellow = buckets["Escalar programas"]
     red = buckets["Revisar los programas asociados"]
+    no_goal = buckets["Sin meta oficial"]
     print(f"  Continuar={len(green)}, Escalar={len(yellow)}, Revisar={len(red)}")
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -789,12 +789,12 @@ def generate_summary_documents(df, stages):
     escritos = []
     try:
         try:
-            frg.generate_visual_table(green, yellow, red)
+            frg.generate_visual_table(green, yellow, red, no_goal)
             escritos.append('Resumen_Recomendaciones_IPP.pdf')
         except Exception as e:
             print(f"Error generando PDF: {e}")
         try:
-            frg.generate_markdown_report(green, yellow, red)
+            frg.generate_markdown_report(green, yellow, red, no_goal)
             escritos.append('Resumen_Recomendaciones_IPP.md')
         except Exception as e:
             print(f"Error generando MD: {e}")
@@ -866,13 +866,15 @@ def write_consistency_report(df, stages):
     if (stages['has_reco'] and stages['has_ontime']
             and 'Ultima_milla' in df.columns and 'Elastico' in df.columns
             and stages['has_meet_inc']):
-        ct = df[COL_ONTIME].fillna(0).astype(float)
+        ct = pd.to_numeric(df[COL_ONTIME], errors='coerce').fillna(0)
         um = df['Ultima_milla'].fillna(0).astype(float)
         el = df['Elastico'].fillna(0).astype(float)
-        cmi = df[COL_MEET_INC].fillna(0).astype(float)
+        cmi = pd.to_numeric(df[COL_MEET_INC], errors='coerce').fillna(0)
         calc = np.where((ct == 1) | (um == 1), "Continuar programas",
                         np.where((el == 1) & (cmi == 1), "Escalar programas",
                                  "Revisar los programas asociados"))
+        has_goal = official_goal_data(df)[1].values
+        calc = np.where(has_goal, calc, 'Sin meta oficial')
         bad = df.index[calc != df[COL_RECO].values]
         L += ["", f"## `{COL_RECO}` que no se deriva de las banderas ({len(bad)})", ""]
         if len(bad):

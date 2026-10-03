@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
+import glob
+from official_goals import attach_official_goals, load_goal_sources
 
 # Desactivar advertencias
 warnings.filterwarnings('ignore')
@@ -28,12 +30,15 @@ def get_path(filename):
 
 def generate_plots_by_consideration():
     """
-    Genera 3 gráficas de barras dividiendo los indicadores según la recomendación final
+    Genera gráficas de barras dividiendo los indicadores según la recomendación final
     contenida en el reporte del IPP.
     """
     print("\n" + "="*50)
     print("GENERANDO GRÁFICAS POR RECOMENDACIÓN")
     print("="*50)
+    # Las categorías pueden quedar vacías al cambiar metas o selección ODS.
+    for old_plot in glob.glob(get_path('Bars_baseline_by_consideration_*.png')):
+        os.remove(old_plot)
     
     # Definición de rutas
     file_baseline = get_path('output_baseline.xlsx')
@@ -49,6 +54,7 @@ def generate_plots_by_consideration():
     # Cargar datos
     print("Cargando datos de simulación y reporte...")
     df_output = pd.read_excel(file_baseline)
+    df_output = attach_official_goals(df_output, *load_goal_sources(get_path))
     df_report = pd.read_excel(file_report)
     df_raw = pd.read_excel(file_raw)
 
@@ -107,14 +113,16 @@ def generate_plots_by_consideration():
     recommendations = [
         "Continuar programas",
         "Escalar programas",
-        "Revisar los programas asociados"
+        "Revisar los programas asociados",
+        "Sin meta oficial"
     ]
     
     # Sufijos para los nombres de archivo PDF
     file_suffixes = {
         "Continuar programas": "continuar",
         "Escalar programas": "escalar",
-        "Revisar los programas asociados": "revisar"
+        "Revisar los programas asociados": "revisar",
+        "Sin meta oficial": "sin_meta_oficial"
     }
 
     # Generación de las gráficas
@@ -166,7 +174,7 @@ def generate_plots_by_consideration():
                           head_width=.3, head_length=.015, linestyle=':')
                 
                 # 4. Meta Real (Punto negro)
-                if 'real_goal' in row:
+                if row.has_official_goal:
                     plt.scatter(x_pos, row.real_goal, color='black', s=25, zorder=10)
 
             # Estética de la gráfica

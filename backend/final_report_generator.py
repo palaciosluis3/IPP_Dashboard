@@ -3,7 +3,13 @@ import pandas as pd
 import numpy as np
 import warnings
 from PIL import Image, ImageDraw, ImageFont
+from matplotlib.font_manager import FontProperties, findfont
 import sys
+from official_goals import (
+    official_goal_data, read_raw_indicators, NO_GOAL_GUIDANCE, convergence_note,
+    CONVERGENCE_NOTE_FONT, CONVERGENCE_NOTE_SIZE, CONVERGENCE_NOTE_COLOR,
+    CONVERGENCE_NOTE_GAP_INCHES,
+)
 
 # Desactivar advertencias
 warnings.filterwarnings('ignore')
@@ -46,9 +52,12 @@ def generate_report():
 
     # 1. Cargar y Unificar Datos
     df_indis_prep = pd.read_excel(file_indis)
-    df_raw = pd.read_excel(file_raw_indis)
+    df_raw = read_raw_indicators(get_path)
     df_base = pd.read_excel(file_baseline).set_index('seriesCode')
     df_inc = pd.read_excel(file_increase).set_index('seriesCode')
+    df_indis_prep['real_goals'], df_indis_prep['has_official_goal'] = official_goal_data(df_indis_prep, df_raw)
+    if 'gov_target' not in df_raw:
+        df_raw['gov_target'] = np.nan
     
     # Unificar todas las columnas de raw_indicators
     df_master = pd.merge(df_raw, df_indis_prep.drop(columns=['seriesName', 'color', 'instrumental', 'sdg'], errors='ignore'), on='seriesCode', how='left')
@@ -93,23 +102,28 @@ def generate_report():
     cat_green = []
     cat_yellow = []
     cat_red = []
+    cat_no_goal = []
 
     for _, row in df_master.iterrows():
         code = row['seriesCode']
         name = row['seriesName']
         # Usamos la meta REAL del gobierno (no la meta inflada que solo evita el error de IPP)
         goal = row['real_goals']
+        has_goal = bool(row['has_official_goal'])
         
         # Columnas de tiempo
         time_cols = [col for col in df_base.columns if str(col).startswith('t_') or str(col).isnumeric() or isinstance(col, int)]
         
         # Lógica de Cumplimiento
+        base_series = inc_series = np.array([np.nan])
         try:
             base_series = df_base.loc[code, time_cols].values
-            cumple_meta_baseline = 1 if any(base_series >= goal) else 0
+            cumple_meta_baseline = (1 if any(base_series >= goal) else 0) if has_goal else 'No evaluable'
             
             # NUEVO: Cumplimiento a tiempo (Gobierno)
-            if target_step in df_base.columns:
+            if not has_goal:
+                cumple_a_tiempo = 'No evaluable'
+            elif target_step in df_base.columns:
                 val_at_target = df_base.loc[code, target_step]
                 cumple_a_tiempo = 1 if val_at_target >= goal else 0
             elif target_step < len(base_series):
@@ -119,7 +133,7 @@ def generate_report():
                 cumple_a_tiempo = 0
             
             inc_series = df_inc.loc[code, time_cols].values
-            cumple_meta_increase = 1 if any(inc_series >= goal) else 0
+            cumple_meta_increase = (1 if any(inc_series >= goal) else 0) if has_goal else 'No evaluable'
             
             # Elasticidad
             base_in, base_out = base_series[0], base_series[-1]
@@ -130,16 +144,19 @@ def generate_report():
             
             elasticidad = 1 if (growth_inc - growth_base) > ELASTICITY_THRESHOLD else 0
         except KeyError:
-            cumple_meta_baseline = 0
-            cumple_a_tiempo = 0
-            cumple_meta_increase = 0
+            cumple_meta_baseline = 0 if has_goal else 'No evaluable'
+            cumple_a_tiempo = 0 if has_goal else 'No evaluable'
+            cumple_meta_increase = 0 if has_goal else 'No evaluable'
             growth_base = 0
             growth_inc = 0
             elasticidad = 0
 
         ultima_milla = 1 if row['IF'] > ULTIMA_MILLA_THRESHOLD else 0
         
-        if cumple_a_tiempo == 1 or ultima_milla == 1:
+        if not has_goal:
+            recomendacion = 'Sin meta oficial'
+            cat_no_goal.append(name)
+        elif cumple_a_tiempo == 1 or ultima_milla == 1:
             recomendacion = "Continuar programas"
             cat_green.append(name)
         elif elasticidad == 1 and cumple_meta_increase == 1:
@@ -150,7 +167,10 @@ def generate_report():
             cat_red.append(name)
         
         res_row = row.to_dict()
+        # En el reporte la meta técnica lleva un nombre inequívoco.
+        res_row['Meta_tecnica_simulacion'] = res_row.pop('goals', np.nan)
         res_row.update({
+            'Estado_meta_oficial': 'Disponible' if has_goal else 'Sin meta oficial',
             'Cumple Meta_baseline': cumple_meta_baseline,
             'Cumple_a_tiempo': cumple_a_tiempo,
             'Cumple Meta_increase': cumple_meta_increase,
@@ -160,6 +180,9 @@ def generate_report():
             'Crecimiento_baseline': growth_base,
             'Crecimiento_increase': growth_inc
         })
+        for scenario, series in (('baseline', base_series), ('increase', inc_series)):
+            res_row[f'Nivel_inicial_{scenario}'] = series[0]
+            res_row[f'Nivel_final_{scenario}'] = series[-1]
         final_rows.append(res_row)
 
     # Guardar Excel
@@ -169,13 +192,13 @@ def generate_report():
 
     # 2. Generación de Tabla Estética
     try:
-        generate_visual_table(cat_green, cat_yellow, cat_red)
+        generate_visual_table(cat_green, cat_yellow, cat_red, cat_no_goal)
     except Exception as e:
         print(f"Error generando PDF: {e}")
 
     # 3. Generación de Reporte Markdown
     try:
-        generate_markdown_report(cat_green, cat_yellow, cat_red)
+        generate_markdown_report(cat_green, cat_yellow, cat_red, cat_no_goal)
     except Exception as e:
         print(f"Error generando MD: {e}")
 
@@ -194,7 +217,7 @@ def wrap_text(text, font, max_width, draw):
     lines.append(current_line)
     return lines
 
-def generate_visual_table(green, yellow, red):
+def generate_visual_table(green, yellow, red, no_goal=()):
     print("Creando tabla visual estética (Layout Dinámico)...")
     
     # 1. Configuración de Estilo
@@ -205,6 +228,7 @@ def generate_visual_table(green, yellow, red):
     line_h = 15
     item_spacing = 2
     section_margin = 40
+    resolution = 150.0
     
     # Fuentes
     try:
@@ -225,6 +249,8 @@ def generate_visual_table(green, yellow, red):
         {"title": "Programas\nescalables", "color": (255, 192, 0), "items": yellow},
         {"title": "Revisar diseño\ny/o\nimplementación\nen busca de\ncuellos de\nbotella", "color": (210, 34, 45), "items": red}
     ]
+    if no_goal:
+        section_data.append({"title": "Sin meta\noficial", "color": (100, 116, 139), "items": no_goal})
 
     total_needed_h = 150 # Margen inicial y final
     for sec in section_data:
@@ -241,8 +267,20 @@ def generate_visual_table(green, yellow, red):
             cols_heights[min_col] += (lines * line_h) + item_spacing
         
         # Altura de la sección = altura de la columna más alta + encabezado
-        sec["h"] = max(150, max(cols_heights) + 100) # Mínimo 150px
+        sec["h"] = max(150, max(cols_heights) + 100, len(sec['title'].split('\n')) * 40 + 40)
         total_needed_h += sec["h"] + section_margin
+
+    if no_goal:
+        # Misma fuente, tamaño físico y separación que la nota de las donas.
+        footer_text = convergence_note(len(green) + len(yellow) + len(red), len(no_goal))
+        footer_font = ImageFont.truetype(
+            findfont(FontProperties(family=CONVERGENCE_NOTE_FONT)),
+            CONVERGENCE_NOTE_SIZE * resolution / 72,
+        )
+        last_box_bottom = 50 + sum(sec['h'] + section_margin for sec in section_data) - section_margin
+        footer_y = last_box_bottom + CONVERGENCE_NOTE_GAP_INCHES * resolution
+        footer_bbox = temp_draw.textbbox((0, 0), footer_text, font=footer_font, anchor='mt')
+        total_needed_h = int(np.ceil(footer_y + footer_bbox[3] + resolution * 0.1))
 
     # 2. Crear Imagen con altura dinámica
     img = Image.new('RGB', (width, total_needed_h), color='white')
@@ -260,7 +298,7 @@ def generate_visual_table(green, yellow, red):
         
         # Texto Sidebar
         lines_title = title.split('\n')
-        line_y = y + (h / 2) - (len(lines_title) * 20)
+        line_y = y + (h / 2) - ((len(lines_title) - 1) * 20)
         for line in lines_title:
             draw.text((140, line_y), line, fill="white", font=font_bold, anchor="mm")
             line_y += 40
@@ -282,13 +320,21 @@ def generate_visual_table(green, yellow, red):
             
         current_y += h + section_margin
 
-    img.save(file_pdf, "PDF", resolution=150.0)
+    if no_goal:
+        draw.text((width / 2, footer_y), footer_text, fill=CONVERGENCE_NOTE_COLOR,
+                  font=footer_font, anchor='mt')
+
+    img.save(file_pdf, "PDF", resolution=resolution)
     print(f"PDF generado dinámicamente: {file_pdf}")
 
-def generate_markdown_report(green, yellow, red):
+def generate_markdown_report(green, yellow, red, no_goal=()):
     print("Creando reporte Markdown con recomendaciones...")
     lines = [
         "# Resumen de Recomendaciones IPP",
+        "",
+        f"Con meta oficial: **{len(green)+len(yellow)+len(red)}**. Sin meta oficial: **{len(no_goal)}**.",
+        "",
+        NO_GOAL_GUIDANCE,
         "",
         "## Continuar con programas actuales",
     ]
@@ -318,6 +364,9 @@ def generate_markdown_report(green, yellow, red):
     else:
         lines.append("*No hay indicadores en esta categoría.*")
     lines.append("")
+    lines.extend(['## Sin meta oficial', '', NO_GOAL_GUIDANCE, ''])
+    lines.extend([f'- {item}' for item in no_goal] if no_goal else ['*No hay indicadores en esta categoría.*'])
+    lines.append('')
     
     with open(file_md, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))

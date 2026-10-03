@@ -5,6 +5,8 @@ import subprocess
 import time
 import re
 import sys
+import json
+from backend.official_goals import NO_GOAL_GUIDANCE
 
 # --- PARÁMETROS PERSISTENTES (Se actualizan al correr el modelo) ---
 QM_PERSISTENT = 0.4248
@@ -216,8 +218,8 @@ def get_path(filename, folder=None):
     base_path = os.path.dirname(os.path.abspath(__file__))
     if folder:
         return os.path.join(base_path, folder, filename)
-    # Por defecto, si es un archivo generado (Excel/PDF), buscamos en Outputs
-    if filename.endswith('.xlsx') or filename.endswith('.pdf'):
+    # Por defecto, si es un archivo generado (Excel/PDF/PNG), buscamos en Outputs
+    if filename.endswith('.xlsx') or filename.endswith('.pdf') or filename.endswith('.png'):
         # Excepto los raw inputs
         if not filename.startswith('raw_'):
             return os.path.join(base_path, "Outputs", filename)
@@ -236,6 +238,17 @@ def update_script_config(file_path, replacements):
     
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
+
+
+def sync_intermediate_year(intermediate_year):
+    """Un único plazo para las gráficas y el cálculo de recomendaciones."""
+    for script in (
+        'prospective_simulation.py', 'prospective_simulation_increase.py',
+        'prospective_simulation_byconsideration.py', 'graphics_only.py',
+        'final_report_generator.py', 'graphics_from_report.py',
+    ):
+        update_script_config(get_path(script, folder='backend'),
+                             {'INTERMEDIATE_CONVERGENCE_YEAR': intermediate_year})
 
 # --- FLUJO DE LA APLICACIÓN ---
 
@@ -288,6 +301,7 @@ with st.sidebar:
 # --- PASO 1: CARGA DE ARCHIVOS ---
 if st.session_state.step == 1:
     st.markdown('<div class="step-box"><h3>Paso 1: Carga de Archivos de Datos</h3><p>Por favor, sube los archivos Excel preparados para el análisis.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-box"><p><b>Indicadores sin meta oficial:</b> deja sus celdas de <code>gov_target</code> vacías, o elimina la columna si ninguno tiene meta. Se calibran y simulan todos los indicadores. ' + NO_GOAL_GUIDANCE + '</p></div>', unsafe_allow_html=True)
     
     # --- SECCIÓN DE TEMPLATES ---
     with st.expander("📥 ¿No tienes las plantillas? Descárgalas aquí", expanded=False):
@@ -398,10 +412,10 @@ elif st.session_state.step == 3:
         )
         st.session_state.elastic = elastic_pct / 100.0
 
-        st.write("**Umbral de Última Milla (Proximidad a la meta)**")
+        st.write("**Umbral de Última Milla (Proximidad al límite normalizado)**")
         last_mile_pct = st.slider(
             "Desliza (%)", 80.0, 95.0, value=st.session_state.last_mile * 100.0, step=0.5,
-            help="Cercanía mínima requerida para considerar que un indicador ha alcanzado su meta."
+            help="Nivel normalizado IF a partir del cual se identifica última milla; también aplica sin meta oficial. No mide cumplimiento de una meta."
         )
         st.session_state.last_mile = last_mile_pct / 100.0
 
@@ -418,7 +432,7 @@ elif st.session_state.step == 3:
             update_script_config(get_path("prospective_simulation_increase.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year, "BUDGET_GROWTH_FACTOR": total_growth_factor})
             update_script_config(get_path("prospective_simulation_byconsideration.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             update_script_config(get_path("graphics_only.py", folder="backend"), {"YEARS_TO_FORECAST": years_sim, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
-            update_script_config(get_path("final_report_generator.py", folder="backend"), {"ULTIMA_MILLA_THRESHOLD": st.session_state.last_mile, "ELASTICITY_THRESHOLD": st.session_state.elastic})
+            update_script_config(get_path("final_report_generator.py", folder="backend"), {"ULTIMA_MILLA_THRESHOLD": st.session_state.last_mile, "ELASTICITY_THRESHOLD": st.session_state.elastic, "INTERMEDIATE_CONVERGENCE_YEAR": inter_year})
             next_step()
             st.rerun()
 
@@ -524,6 +538,8 @@ elif st.session_state.step == 5:
 
     def execute_scripts(scripts):
         """Ejecuta secuencialmente la lista de scripts mostrando el log en vivo."""
+        # También cubre el atajo de gráficos, que no pasa por el Paso 3.
+        sync_intermediate_year(st.session_state.inter_year)
         progress_bar = st.progress(0)
         status_text = st.empty()
         # Creamos un contenedor dedicado para el log con altura fija
@@ -617,6 +633,15 @@ elif st.session_state.step == 5:
 # --- PASO 6: RESULTADOS ---
 elif st.session_state.step == 6:
     st.markdown('<div class="step-box"><h3>Paso 6: Resultados y Reportes Ejecutivos</h3><p>Descarga tus archivos finales y consulta la carpeta de resultados para el análisis detallado.</p></div>', unsafe_allow_html=True)
+    for scenario, label in (('baseline', 'Escenario base'), ('increase', 'Aumento presupuestario')):
+        status_path = get_path(f'convergence_{scenario}.json', folder='Outputs')
+        if os.path.exists(status_path):
+            with open(status_path, encoding='utf-8') as f:
+                status = json.load(f)
+            st.write(f"**{label}:** {status['with_official_goal']} indicadores con meta oficial; "
+                     f"{status['without_official_goal']} excluidos de convergencia por ausencia de meta.")
+            st.info(status['message'])
+    st.caption(NO_GOAL_GUIDANCE)
     
     col1, col2 = st.columns([1, 1])
     with col1:

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+from official_goals import normalize_official_goals, read_raw_indicators
 
 # 1. Referencias flotantes para los archivos
 # Asumimos que los archivos están en la misma carpeta que este script
@@ -34,7 +35,10 @@ RL_VALUE = 0.5383 # Calidad del estado de derecho
 # 1.01 = 1% por encima de IF (mínimo razonable para no simular un esfuerzo inexistente).
 GOAL_INFLATION_FACTOR = 1.01
 
-data = pd.read_excel(input_file)
+# No ocultar errores de digitación ('NA', 'nan', etc.) como celdas vacías.
+data = read_raw_indicators(get_path)
+if 'gov_target' not in data:
+    data['gov_target'] = np.nan
 
 # Identificar columnas de años (numéricas)
 years = [column_name for column_name in data.columns if str(column_name).isnumeric()]
@@ -172,23 +176,21 @@ if static_series:
     print(f"Nota: {len(static_series)} indicador(es) sin variación temporal; se ajustó IF (x{GOAL_INFLATION_FACTOR}) para permitir la calibración.")
 
 # 2. Loop para refinar la variable 'goals'
+official_goals, has_official_goal = normalize_official_goals(data)
 goals = []
 real_goals = []
 out_of_bounds_targets = []
 for index, row in df.iterrows():
-    # Obtenemos el target original
-    raw_gov_target = data.loc[index, 'gov_target']
-    
     # IMPORTANTE: El target del gobierno también debe normalizarse para ser comparable con IF
-    denom = data.loc[index, 'bestbound'] - data.loc[index, 'worstbound']
-    norm_gov_target = (raw_gov_target - data.loc[index, 'worstbound']) / denom
+    norm_gov_target = official_goals.loc[index]
 
     # Test para verificar que el target normalizado esté estrictamente en (0, 1)
     if norm_gov_target <= 0 or norm_gov_target >= 1:
         out_of_bounds_targets.append((data.loc[index, 'seriesCode'], norm_gov_target))
 
     # Lógica: si la meta real supera el último nivel, usamos la meta real;
-    # si ya está alcanzada (meta <= IF), fijamos una meta mínima por encima de IF
+    # si ya está alcanzada o AUSENTE, fijamos una meta mínima por encima de IF
+    # exclusivamente técnica para conservar el criterio vigente de G en PPI.
     # (acotada al intervalo abierto (0, 1) para no tocar el límite duro 1).
     if norm_gov_target > row['IF']:
         goals.append(norm_gov_target)
@@ -200,6 +202,7 @@ for index, row in df.iterrows():
 
 df['goals'] = goals
 df['real_goals'] = real_goals
+df['has_official_goal'] = has_official_goal
 
 # --- REPORTE DE ERRORES DE VALIDACIÓN ---
 # Nota: los indicadores estáticos (I0 == IF) NO son un error; IPP los admite y ya se

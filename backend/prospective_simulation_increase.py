@@ -6,6 +6,7 @@ import warnings
 import sys
 import multiprocessing
 import policy_priority_inference as ppi
+from official_goals import official_goal_data
 
 # Desactivar advertencias
 warnings.filterwarnings('ignore')
@@ -57,7 +58,8 @@ Imin = df_indis.minVals.values.copy()
 goals = df_indis.goals.values.copy()
 
 indis_index = {code: i for i, code in enumerate(df_indis.seriesCode)}
-real_goals = df_indis.real_goals.values
+real_goals, has_official_goal = official_goal_data(df_indis)
+real_goals = real_goals.values
 
 alphas = df_params.alpha.values.copy()
 alphas_prime = df_params.alpha_prime.values.copy()
@@ -123,190 +125,16 @@ if __name__ == '__main__':
     df_output = pd.DataFrame(new_rows, columns=output_columns)
     df_output['goal'] = goals
     df_output['real_goal'] = real_goals
+    df_output['has_official_goal'] = has_official_goal.values
 
     # Guardar SIEMPRE el set completo de indicadores (sin filtrar por ODS).
     # Esto permite regenerar gráficos para cualquier selección de ODS sin recalibrar.
     df_output.to_excel(get_path('output_increase.xlsx'), index=False)
 
-    # Mapear y filtrar por ODS seleccionados (solo en memoria, para las gráficas)
-    try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        links_path = os.path.join(base_dir, "SDG links.csv")
-        if os.path.exists(links_path):
-            df_links = pd.read_csv(links_path)
-            target_to_sdg = dict(zip(df_links['SDG target'].astype(int), df_links['SDG'].astype(int)))
-
-            # Cargar ODS seleccionados
-            selected_sdgs = list(range(1, 18))
-            selected_sdgs_file = get_path('selected_sdgs.json')
-            if os.path.exists(selected_sdgs_file):
-                import json
-                with open(selected_sdgs_file, 'r') as f:
-                    selected_sdgs = json.load(f)
-                selected_sdgs = [int(x) for x in selected_sdgs]
-
-            df_output['sdg_goal'] = df_output['sdg'].astype(int).map(target_to_sdg)
-            df_output = df_output[df_output['sdg_goal'].isin(selected_sdgs)].drop(columns=['sdg_goal'])
-            df_output = df_output.reset_index(drop=True)
-    except Exception as e_filter:
-        print(f"Error al filtrar por ODS seleccionados: {e_filter}")
-
-    try:
-        import matplotlib.pyplot as plt
-        # VISUALIZACIONES 1 y 2: BARRAS (ESTÉTICA ORIGINAL)
-        # ---------------------------------------------------------
-        # Dividir indicadores en N grupos para no exceder 50 por gráfica
-        max_per_plot = 50
-        num_plots = int(np.ceil(len(df_output) / max_per_plot))
-        per_plot = int(np.ceil(len(df_output) / num_plots))
-        
-        groups = []
-        for i in range(num_plots):
-            start = i * per_plot
-            end = min((i + 1) * per_plot, len(df_output))
-            groups.append((start, end, f'part_{i+1}'))
-
-        for start, end, label in groups:
-            fig = plt.figure(figsize=(12, 4))
-            subset = df_output.iloc[start:end]
-            num_items = len(subset)
-            for idx, (i, row) in enumerate(subset.iterrows()):
-                x_pos = idx
-                plt.bar(x_pos, row[0], color=row.color, width=.65, alpha=.5)
-                # Flecha periodo intermedio
-                inter_idx = INTERMEDIATE_CONVERGENCE_YEAR * calibration_index
-                plt.arrow(x=x_pos, y=row[0], dx=0, dy=row[inter_idx]-row[0], color=row.color,
-                          linewidth=2, alpha=1, head_width=.3, head_length=.02)
-                # Flecha periodo final
-                plt.arrow(x=x_pos, y=row[0], dx=0, dy=row[T_sim-1]-row[0], color=row.color,
-                          linewidth=1, alpha=1, head_width=.3, head_length=.02, linestyle=':')
-                # Meta Real
-                plt.scatter(x_pos, row.real_goal, color='black', s=20, zorder=5)
-
-            plt.xlim(-1, num_items)
-            plt.gca().set_xticks(range(num_items))
-            plt.gca().set_xticklabels(subset.seriesCode, rotation=90, fontsize=7)
-            plt.gca().spines['top'].set_visible(False)
-            plt.gca().spines['right'].set_visible(False)
-            plt.ylabel('levels', fontsize=14)
-            plt.xlabel('indicators', fontsize=14)
-            plt.tight_layout()
-            plt.savefig(get_path(f'Bars_increase_{label}.png'), dpi=300, bbox_inches='tight')
-            plt.close()
-
-        # Visualización 3: Dona de Progreso (ESTÉTICA ORIGINAL)
-        # ---------------------------------------------------------
-        group0, group1, group2, group3, group4, group5 = [], [], [], [], [], []
-        ids, colors = df_output.seriesCode, df_output.color
-        for index, row in df_output.iterrows():
-            if row[0] > 0:
-                proportional_progress = 100*(row[T_sim-1]-row[0])/row[0]
-                if proportional_progress <= 0: group0.append((ids[index], colors[index]))
-                elif 0 < proportional_progress <= 5: group1.append((ids[index], colors[index]))
-                elif 5 < proportional_progress <= 10: group2.append((ids[index], colors[index]))
-                elif 10 < proportional_progress <= 20: group3.append((ids[index], colors[index]))
-                elif 20 < proportional_progress <= 30: group4.append((ids[index], colors[index]))
-                elif 30 < proportional_progress: group5.append((ids[index], colors[index]))
-
-        fig = plt.figure(figsize=(4.5, 4.5))
-        ax = fig.add_subplot(111)
-        ax.axis('equal')
-        width = 0.3
-        pie, texts, pcts = ax.pie([len(group5), len(group4), len(group3), len(group2), len(group1), len(group0)], 
-                                  radius=1-width, startangle=90, counterclock=False,
-                                  colors=['whitesmoke','gainsboro','silver', 'darkgray','dimgrey', 'black'], 
-                                  autopct='%.0f%%', pctdistance=0.79)
-        plt.setp(pie, width=width, edgecolor='white')
-        for i, p in enumerate(pcts): plt.setp(p, color='black' if i < 4 else 'white')
-        ax.legend(pie, ['mayor a 30%', '20-30%', '10-20%','5-10%', '0-5%', 'Negativo'],
-                  loc="center", bbox_to_anchor=(.25, .5, 0.5, .0), fontsize=7, frameon=False)
-
-        cin = [c[1] for g in [group5, group4, group3, group2, group1, group0] for c in g]
-        labels = [c[0] for g in [group5, group4, group3, group2, group1, group0] for c in g]
-        pie2, _ = ax.pie(np.ones(len(labels)), radius=1, colors=cin, labels=labels, rotatelabels=True, 
-                         counterclock=False, startangle=90, 
-                         textprops=dict(va="center", ha='center', rotation_mode='anchor', fontsize=5, color='black'),
-                         labeldistance=1.17)
-        plt.setp(pie2, width=width, edgecolor='none')
-        plt.tight_layout()
-        plt.savefig(get_path('Donut_increase.png'), dpi=300, bbox_inches='tight')
-        plt.close()
-
-        # Visualización 4: Dona de Convergencia (CON DETECCIÓN DE MEJORAS)
-        # ---------------------------------------------------------
-        on_time, late, unfeasible = [], [], []
-        all_vals = df_output.values[:, 3:3+T_sim]
-
-        # 1. Determinar categorías del escenario actual (Aumento)
-        for index, row in df_output.iterrows():
-            # Usamos la meta REAL del gobierno (no la meta inflada que solo evita el error de IPP)
-            meta = row.real_goal if 'real_goal' in row else row.goal
-            reaches = np.where(all_vals[index] >= meta)[0]
-            if len(reaches) > 0 and reaches[0]/calibration_index <= INTERMEDIATE_CONVERGENCE_YEAR: on_time.append(index)
-            elif len(reaches) > 0 and reaches[0]/calibration_index <= YEARS_TO_FORECAST - 1: late.append(index)
-            else: unfeasible.append(index)
-
-        # 2. Intentar cargar el escenario base para comparar "saltos"
-        baseline_file = get_path('output_baseline.xlsx')
-        jumpers = [] # Lista para guardar índices de indicadores que mejoraron
-        if os.path.exists(baseline_file):
-            try:
-                # El baseline se guarda con el set completo; lo alineamos por seriesCode
-                # al subconjunto filtrado de este escenario para comparar posición a posición.
-                df_base = pd.read_excel(baseline_file)
-                df_base = df_base.set_index('seriesCode').reindex(df_output['seriesCode']).reset_index()
-                base_vals = df_base.iloc[:, 3:3+T_sim].values
-                base_goals = df_base['real_goal'].values
-
-                for i in range(len(df_output)):
-                    r_base = np.where(base_vals[i] >= base_goals[i])[0]
-                    cat_base = 0 if (len(r_base) > 0 and r_base[0]/calibration_index <= INTERMEDIATE_CONVERGENCE_YEAR) \
-                               else 1 if (len(r_base) > 0 and r_base[0]/calibration_index <= YEARS_TO_FORECAST - 1) \
-                               else 2
-                    cat_inc = 0 if i in on_time else 1 if i in late else 2
-                    if cat_inc < cat_base:
-                        jumpers.append(i)
-            except Exception as e:
-                print(f"Nota: No se pudo comparar con baseline para detectar saltos: {e}")
-
-        fig = plt.figure(figsize=(6, 4))
-        ax = fig.add_subplot(111)
-        ax.axis('equal')
-        pie, texts, pcts = ax.pie([len(on_time), len(late), len(unfeasible)], radius=1-width, startangle=90, counterclock=False,
-                                  colors=['lightgrey', 'grey', 'black'], autopct='%.0f%%', pctdistance=0.79)
-        plt.setp(pie, width=width, edgecolor='white')
-        for i, p in enumerate(pcts): plt.setp(p, color='black' if i < 2 else 'white')
-
-        # Cálculo robusto de años reales
-        last_h_year_int = int(str(historical_years[-1]))
-        year_conv = last_h_year_int + INTERMEDIATE_CONVERGENCE_YEAR
-        year_final = last_h_year_int + YEARS_TO_FORECAST
-
-        ax.legend(pie, [f'Llega a {year_conv}', 
-                        f'{year_conv + 1}-{year_final}', f'> {year_final}'],
-                  loc="center", bbox_to_anchor=(.25, .5, 0.5, .0), fontsize=7.8, frameon=False)
-
-        indices_conv = on_time + late + unfeasible
-        cin_conv = [df_output.loc[c].color for c in indices_conv]
-        labels_conv = [df_output.loc[c].seriesCode for c in indices_conv]
-
-        pie3, texts3 = ax.pie(np.ones(len(indices_conv)), radius=1, colors=cin_conv, labels=labels_conv, rotatelabels=True, 
-                              counterclock=False, startangle=90, 
-                              textprops=dict(va="center", ha='center', rotation_mode='anchor', fontsize=5, color='black'),
-                              labeldistance=1.17)
-        plt.setp(pie3, width=width, edgecolor='none')
-        for i, idx_original in enumerate(indices_conv):
-            if idx_original in jumpers:
-                texts3[i].set_color('green')
-                texts3[i].set_weight('bold')
-                texts3[i].set_fontsize(5) # Mantenemos tamaño igual a los demás
-
-        plt.tight_layout()
-        plt.savefig(get_path('Donut_Convergencia_increase.png'), dpi=300, bbox_inches='tight')
-        plt.close()
-    except Exception as eppdf_inc:
-        print(f"Error generando visualizaciones (Increase): {eppdf_inc}")
-        import traceback
-        traceback.print_exc()
+    # El filtro es solo para las gráficas; el Excel anterior conserva TODOS.
+    from graphics_only import filter_by_sdg, load_selected_sdgs, plot_increase
+    df_plot = filter_by_sdg(df_output, load_selected_sdgs())
+    plot_increase(df_plot, calibration_index, T_sim, historical_years,
+                    YEARS_TO_FORECAST, INTERMEDIATE_CONVERGENCE_YEAR)
 
     print("\nSimulación Contrafactual y Visualizaciones (Originales) completadas exitosamente.")

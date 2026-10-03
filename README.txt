@@ -20,6 +20,8 @@ Puedes encontrar la última versión estable y las instrucciones de actualizaci�
 > 3. Listado de años en hoja Población de `raw_expenditure.xlsx`.
 > 4. Listado de años en hoja IPC de `raw_expenditure.xlsx`.
 
+> **Recomendación sobre las series históricas:** En lo posible, utiliza una base de indicadores simétrica, con series que cubran el mismo período y observaciones disponibles hasta el mismo año de corte. Esto facilita la interpretación de la calibración y del estado inicial de las simulaciones. Es una recomendación de calidad de datos, no un requisito adicional de la aplicación.
+
 ## 🛠️ Instalación y Configuración
 
 Sigue estos pasos para poner en marcha la aplicación en tu computadora de forma aislada y segura:
@@ -45,6 +47,20 @@ El flujo de trabajo está dividido en 5 pasos guiados:
 3.  **Parámetros IPP**: Configura el escenario de crecimiento presupuestal, los años a proyectar y los umbrales técnicos de calibración.
 4.  **Ejecución**: Presiona el botón de procesamiento. El sistema usará **paralelización multicore** para calibrar el modelo y correr 1000 simulaciones Monte Carlo en tiempo récord.
 5.  **Resultados**: Descarga el reporte final consolidado y el resumen ejecutivo en PDF con recomendaciones automáticas.
+
+## Indicadores sin metas oficiales
+
+- En `raw_indicators.xlsx`, deja vacía la celda `gov_target` cuando no exista una meta oficial. Si ningún indicador tiene meta, también puedes omitir esa columna. No uses textos como `NA`, `nan` o guiones para representar la ausencia.
+- Cero es una meta ingresada, no una ausencia. Todas las metas ingresadas deben ser numéricas, finitas y normalizarse dentro de `(0, 1)` según `worstbound` y `bestbound`; un valor inválido detiene la preparación con el código del indicador y el valor problemático.
+- Todos los indicadores se conservan en la calibración, las interdependencias, los vínculos presupuestarios y ambos escenarios, tengan o no meta. `has_official_goal` identifica las metas disponibles y `real_goals` conserva exclusivamente la meta oficial normalizada.
+- Para mantener el criterio técnico vigente de PPI, un indicador sin meta usa `goals = min(IF × GOAL_INFLATION_FACTOR, 1 − EPS)` (factor predeterminado 1.01). Esta meta técnica se pasa como `G` a la simulación y no representa una meta gubernamental. No se modifica el modelo para usar `G=None`.
+- Las barras y las donas de crecimiento incluyen todos los indicadores seleccionados. El punto de meta se dibuja solo si hay meta oficial. La convergencia excluye a quienes no la tienen: los porcentajes usan únicamente el subconjunto evaluable, con conteos de incluidos y excluidos. Si ninguno tiene meta, se indica “Convergencia no evaluable: no hay metas oficiales disponibles” y se retira cualquier dona de convergencia anterior.
+- El Excel conserva niveles iniciales/finales, crecimientos, sensibilidad presupuestaria (`Elastico`) y última milla. Para indicadores sin meta, los tres campos de cumplimiento dicen `No evaluable`, `Estado_meta_oficial` indica la ausencia y `Recomendacion_Final` usa `Sin meta oficial`. `Meta_tecnica_simulacion` identifica explícitamente el objetivo técnico. PDF, Markdown y gráficas por consideración incluyen esta categoría: deben interpretarse las trayectorias, crecimiento, sensibilidad y última milla, sin asignar automáticamente Continuar, Escalar o Revisar.
+- El modo de gráficos únicamente aplica las mismas reglas. En resultados antiguos sin bandera se consulta `real_goal` / `real_goals` o, si esas columnas faltan, las metas originales con sus bounds. `goal` / `goals` nunca prueban la existencia de una meta oficial.
+
+Verificación reducida (datos sintéticos aislados de `Outputs`):
+` .venv\Scripts\python.exe -m unittest discover -s tests -v `
+Estas pruebas usan calibración reducida y tres simulaciones por escenario; sus parámetros y resultados son de prueba, no resultados calibrados para decisiones de política.
 
 ## 📚 Créditos y Referencias
 
