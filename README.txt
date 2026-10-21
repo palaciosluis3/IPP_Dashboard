@@ -14,7 +14,8 @@ En la rama `main`, pulsa **Code → Download ZIP** y extrae el archivo en tu com
 - Al abrir la app, se consulta una vez por sesión el `version.json` publicado en la rama `main`. Si su número es mayor que el de tu copia local, aparece una ventana con la versión disponible, las novedades y un enlace para descargar el ZIP completo.
 - También puedes pulsar **Comprobar actualizaciones**, debajo de **Reiniciar Aplicación**, para repetir la consulta. El aviso no reaparece al cambiar de paso o descargar informes; puede volver a mostrarse al comprobar manualmente, reiniciar la aplicación o abrir una nueva sesión.
 - La consulta requiere internet. Si falla la conexión o la información publicada no está disponible, puedes seguir trabajando y reintentar con el botón.
-- Para actualizar, cierra la app, descarga y extrae el ZIP en una carpeta nueva, conserva tus archivos de entrada y la carpeta `Outputs` anterior, y ejecuta `setup.bat` y después `start_app.bat` en la nueva carpeta. Copia tus datos/resultados anteriores allí si deseas reutilizarlos.
+- Para actualizar, cierra la app, descarga y descomprime el ZIP. Abre la carpeta extraída y copia su contenido dentro de tu carpeta de instalación actual (donde está `start_app.bat`), aceptando reemplazar los archivos de la aplicación. Conserva tus archivos de datos (`raw_indicators.xlsx` y `raw_expenditure.xlsx`) y las carpetas `Outputs` y `.venv` sin borrarlos ni reemplazarlos, aunque aparezcan archivos con esos nombres en el ZIP. Después, abre `start_app.bat` como siempre. Así reutilizas tus datos, resultados y librerías instaladas.
+- Solo necesitas ejecutar `setup.bat` de nuevo si las novedades indican cambios en las librerías. Este script reutiliza la carpeta `.venv` existente y actualiza sus dependencias.
 - La app informa de la actualización; la descarga e instalación son manuales.
 
 ### Publicar una actualización (mantenimiento)
@@ -23,6 +24,7 @@ El archivo `version.json` de la raíz identifica la versión de cada copia desca
 
 1. Incrementa `version` con el formato numérico `X.Y.Z` (por ejemplo, `1.0.1` y después `1.0.2`). No uses sufijos como `-beta`. Las versiones se comparan numéricamente: `1.10.0` es posterior a `1.9.0`.
 2. Actualiza `notes` con un resumen breve de las novedades. Es opcional y debe ser texto.
+   Si cambian las dependencias de `requirements.txt`, indica en las novedades que se debe ejecutar `setup.bat` antes de abrir la app.
 3. Publica `version.json` junto con todos los cambios de la app en la rama `main` de `palaciosluis3/IPP_Dashboard`, preferiblemente en el mismo commit. No incrementes únicamente el archivo remoto: el ZIP debe incluir el mismo número que se anuncia.
 
 Ejemplo para la siguiente actualización:

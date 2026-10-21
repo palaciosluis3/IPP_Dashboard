@@ -284,7 +284,13 @@ def show_update_dialog():
     st.write("Te recomendamos descargar la versión actualizada de IPP Dashboard.")
     if result.get('notes'):
         st.text(result['notes'])
-    st.info("Descarga y extrae el ZIP en una carpeta nueva. Conserva tus datos y la carpeta Outputs de la versión anterior.")
+    st.info(
+        "Cierra la aplicación, descomprime el ZIP y copia el contenido de la carpeta extraída "
+        "en tu carpeta de instalación actual, reemplazando los archivos de la app. "
+        "Conserva tus archivos de datos y las carpetas Outputs y .venv sin borrarlos ni reemplazarlos. "
+        "Después, abre start_app.bat como siempre. Solo necesitas ejecutar setup.bat "
+        "si las novedades indican cambios en las librerías."
+    )
     st.link_button("📥 Descargar ZIP actualizado", DOWNLOAD_URL, use_container_width=True)
     if st.button("Continuar con esta versión", use_container_width=True):
         st.rerun()
