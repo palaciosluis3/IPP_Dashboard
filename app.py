@@ -301,7 +301,6 @@ with st.sidebar:
 # --- PASO 1: CARGA DE ARCHIVOS ---
 if st.session_state.step == 1:
     st.markdown('<div class="step-box"><h3>Paso 1: Carga de Archivos de Datos</h3><p>Por favor, sube los archivos Excel preparados para el análisis.</p></div>', unsafe_allow_html=True)
-    st.markdown('<div class="step-box"><p><b>Indicadores sin meta oficial:</b> deja sus celdas de <code>gov_target</code> vacías, o elimina la columna si ninguno tiene meta. Se calibran y simulan todos los indicadores. ' + NO_GOAL_GUIDANCE + '</p></div>', unsafe_allow_html=True)
     
     # --- SECCIÓN DE TEMPLATES ---
     with st.expander("📥 ¿No tienes las plantillas? Descárgalas aquí", expanded=False):
@@ -670,4 +669,3 @@ elif st.session_state.step == 6:
         st.code(outputs_dir)
         st.info("💡 **Nota:** Puedes abrir esta carpeta manualmente en tu explorador de Windows para revisar las gráficas y parámetros técnicos.")
 
-    st.balloons()
