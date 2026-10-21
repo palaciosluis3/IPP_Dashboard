@@ -7,6 +7,7 @@ import re
 import sys
 import json
 from backend.official_goals import NO_GOAL_GUIDANCE
+from update_checker import check_for_updates, validate_manifest, DOWNLOAD_URL
 
 # --- PARÁMETROS PERSISTENTES (Se actualizan al correr el modelo) ---
 QM_PERSISTENT = 0.4248
@@ -250,6 +251,49 @@ def sync_intermediate_year(intermediate_year):
         update_script_config(get_path(script, folder='backend'),
                              {'INTERMEDIATE_CONVERGENCE_YEAR': intermediate_year})
 
+def load_local_version():
+    """La versión instalada se lee siempre de la copia local, usando get_path."""
+    try:
+        with open(get_path('version.json'), encoding='utf-8') as f:
+            return validate_manifest(json.load(f))['version']
+    except (OSError, ValueError):
+        return None
+
+
+def refresh_update_status():
+    local_version = load_local_version()
+    st.session_state.installed_version = local_version
+    if local_version is None:
+        result = {
+            'status': 'error',
+            'message': 'No se pudo leer la versión instalada. Comprueba el archivo version.json de la aplicación.',
+        }
+    else:
+        result = check_for_updates(local_version)
+    st.session_state.update_check_result = result
+    st.session_state.update_dialog_pending = result['status'] == 'available'
+
+
+@st.dialog("📥 Actualización disponible")
+def show_update_dialog():
+    result = st.session_state.update_check_result
+    st.write(
+        f"Tienes instalada la versión **{st.session_state.installed_version}** "
+        f"y está disponible la **{result['version']}**."
+    )
+    st.write("Te recomendamos descargar la versión actualizada de IPP Dashboard.")
+    if result.get('notes'):
+        st.text(result['notes'])
+    st.info("Descarga y extrae el ZIP en una carpeta nueva. Conserva tus datos y la carpeta Outputs de la versión anterior.")
+    st.link_button("📥 Descargar ZIP actualizado", DOWNLOAD_URL, use_container_width=True)
+    if st.button("Continuar con esta versión", use_container_width=True):
+        st.rerun()
+
+
+# Una consulta por sesión; las interacciones y descargas no repiten el aviso.
+if 'update_check_result' not in st.session_state:
+    refresh_update_status()
+
 # --- FLUJO DE LA APLICACIÓN ---
 
 # Sidebar: Progreso y Referencias
@@ -281,6 +325,22 @@ with st.sidebar:
         for key in st.session_state.keys():
             del st.session_state[key]
         st.rerun()
+
+    if st.button("🔎 Comprobar actualizaciones", use_container_width=True):
+        with st.spinner("Consultando versión publicada..."):
+            refresh_update_status()
+
+    st.caption(f"Versión instalada: {st.session_state.installed_version or 'no disponible'}")
+    update_result = st.session_state.update_check_result
+    if update_result['status'] == 'available':
+        st.warning(f"Hay una actualización disponible: {update_result['version']}.")
+        st.link_button("📥 Descargar actualización", DOWNLOAD_URL, use_container_width=True)
+    elif update_result['status'] == 'current':
+        st.caption("Tienes la última versión publicada.")
+    elif update_result['status'] == 'ahead':
+        st.caption(f"Esta copia es más reciente que la versión publicada ({update_result['version']}).")
+    else:
+        st.caption(update_result['message'])
 
     # Espacio flexible para empujar las referencias hacia abajo
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -668,4 +728,9 @@ elif st.session_state.step == 6:
         st.write("Todos los archivos generados y las gráficas se guardaron en:")
         st.code(outputs_dir)
         st.info("💡 **Nota:** Puedes abrir esta carpeta manualmente en tu explorador de Windows para revisar las gráficas y parámetros técnicos.")
+
+
+# Fuera de la barra lateral para que el modal se muestre sobre la página completa.
+if st.session_state.pop('update_dialog_pending', False):
+    show_update_dialog()
 

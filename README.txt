@@ -4,8 +4,37 @@ Esta aplicación es una herramienta avanzada basada en el modelo **Policy Priori
 
 ## ⬇️ Descargar la App
 
-Puedes encontrar la última versión estable y las instrucciones de actualización en el repositorio oficial:
-🔗 https://github.com/palaciosluis3/IPP_Dashboard/releases
+Descarga la aplicación completa desde el repositorio oficial:
+🔗 https://github.com/palaciosluis3/IPP_Dashboard
+
+En la rama `main`, pulsa **Code → Download ZIP** y extrae el archivo en tu computadora. No necesitas tener Git instalado. La distribución y el aviso de actualizaciones utilizan el repositorio directamente, sin Releases.
+
+## 🔔 Actualizaciones
+
+- Al abrir la app, se consulta una vez por sesión el `version.json` publicado en la rama `main`. Si su número es mayor que el de tu copia local, aparece una ventana con la versión disponible, las novedades y un enlace para descargar el ZIP completo.
+- También puedes pulsar **Comprobar actualizaciones**, debajo de **Reiniciar Aplicación**, para repetir la consulta. El aviso no reaparece al cambiar de paso o descargar informes; puede volver a mostrarse al comprobar manualmente, reiniciar la aplicación o abrir una nueva sesión.
+- La consulta requiere internet. Si falla la conexión o la información publicada no está disponible, puedes seguir trabajando y reintentar con el botón.
+- Para actualizar, cierra la app, descarga y extrae el ZIP en una carpeta nueva, conserva tus archivos de entrada y la carpeta `Outputs` anterior, y ejecuta `setup.bat` y después `start_app.bat` en la nueva carpeta. Copia tus datos/resultados anteriores allí si deseas reutilizarlos.
+- La app informa de la actualización; la descarga e instalación son manuales.
+
+### Publicar una actualización (mantenimiento)
+
+El archivo `version.json` de la raíz identifica la versión de cada copia descargada. La primera versión con este mecanismo es `1.0.0`. Para anunciar cambios:
+
+1. Incrementa `version` con el formato numérico `X.Y.Z` (por ejemplo, `1.0.1` y después `1.0.2`). No uses sufijos como `-beta`. Las versiones se comparan numéricamente: `1.10.0` es posterior a `1.9.0`.
+2. Actualiza `notes` con un resumen breve de las novedades. Es opcional y debe ser texto.
+3. Publica `version.json` junto con todos los cambios de la app en la rama `main` de `palaciosluis3/IPP_Dashboard`, preferiblemente en el mismo commit. No incrementes únicamente el archivo remoto: el ZIP debe incluir el mismo número que se anuncia.
+
+Ejemplo para la siguiente actualización:
+
+```json
+{
+  "version": "1.0.1",
+  "notes": "Correcciones y mejoras de los informes."
+}
+```
+
+Solo las copias que ya incluyen este comprobador pueden mostrar avisos; quienes tengan una versión anterior deben descargarla manualmente una primera vez. La comprobación no envía datos de indicadores, presupuestos ni resultados.
 
 ## 🚀 Estructura del Proyecto
 
